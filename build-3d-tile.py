@@ -5,16 +5,33 @@ import numpy as np
 from py3dtiles import GlTF, TriangleSoup, B3dm
 from pprint import pprint
 import os
+import json
 
-# Canada ice-wedge polygon file with 89 polygons, matches FME conversion
+# The file to convert to b3dm and the path to save the b3dm to
 file="/data/example.shp"
-#file="/data/datasets/canada/WV02_20120801221347_103001001BC96000_12AUG01221347-M1BS-500060498180_01_P001_u16rf3413_pansh/WV02_20120801221347_103001001BC96000_12AUG01221347-M1BS-500060498180_01_P001_u16rf3413_pansh.shp"
+save_to="run-cesium/tilesets/build-3d-tile-output"
+
 directory=os.getcwd()
 filepath=directory+file
 print("Converting ", filepath)
 
 # Save as - the file name of the result .b3dm file
-save_as="run-cesium/tilesets/model"
+save_as_filename="model"
+
+tileset = {
+    "asset" : {
+		"version" : "0.0"
+	},
+    "properties" : {
+		"Class" : {}
+	},
+	"geometricError" : 30,
+	"root" : {
+        "geometricError" : 30,
+        "refine" : "ADD",
+        "content" : {}
+    }
+}
 
 # Import the shp file
 gdf : GeoDataFrame = gpd.read_file(filepath)
@@ -37,7 +54,6 @@ for feature in gdf.iterfeatures():
     print(f"Processing {row + 1} of {len(gdf)}")
     ext_ring_z = []
 
-    print(f"Caching xyz points")
     for point in polygon.exterior.coords:
         # create an exterior ring with xyz values, not just xy
         # Use a .1 meter elevation for now. May need to dynamically retrieve this from the data if elevation is there
@@ -63,7 +79,6 @@ for feature in gdf_4978.iterfeatures():
         
     # Cache the x,y,z values for max/min calc later
     # TODO: Look into faster ways to do this
-    print(f"Caching xyz points")
     for point in polygon_4978.exterior.coords:
         # Cache the x,y,z values
         x, y, z = point[0], point[1], point[2]
@@ -121,13 +136,29 @@ bounding_volume_box = [(min(point_x_values_4978) + max(point_x_values_4978))/2, 
 
 pprint(bounding_volume_box)
 
+# Create the content for this tile
+tileset["root"]["content"] = {
+    "boundingVolume" : { "box": bounding_volume_box },
+    "url": save_as_filename + ".b3dm"
+}
+# Add the bounding box to the root of the tileset
+tileset["root"]["boundingVolume"] = { "box": bounding_volume_box }
+
+# Create the tileset.json
+# Serializing json 
+json_object = json.dumps(tileset, indent = 4)
+  
+# Writing to sample.json
+with open(save_to+"/tileset.json", "w") as outfile:
+    outfile.write(json_object)
+
 # --- Convert to b3dm -----
 # create a b3dm tile_content directly from the glTF.
 print("Creating b3dm file")
 t = B3dm.from_glTF(gltf)
 
 # to save our tile as a .b3dm file
-t.save_as(save_as+".b3dm")
+t.save_as(save_to+"/"+save_as_filename+".b3dm")
 
 print("Done.")
 
