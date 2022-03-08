@@ -22,7 +22,7 @@ var tileset = new Cesium.Cesium3DTileset({
   debugShowBoundingVolume: true,
   debugShowContentBoundingVolume: true,
   debugShowGeometricError: true,
-  debugWireframe: true
+  debugWireframe: false
 });
 
 tileset.style = new Cesium.Cesium3DTileStyle({
@@ -40,7 +40,7 @@ var tilesetFME = new Cesium.Cesium3DTileset({
   debugShowBoundingVolume: false,
   debugShowContentBoundingVolume: false,
   debugShowGeometricError: true,
-  debugWireframe: true
+  debugWireframe: false
 });
 
 tilesetFME.style = new Cesium.Cesium3DTileStyle({
