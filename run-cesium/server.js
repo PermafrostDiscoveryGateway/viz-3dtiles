@@ -1,6 +1,8 @@
 /* Simple MetacatUI development server.
+
 You'll need node.js and express.js to run this.
 Install express.js with `npm install express`.
+
 You'll also likely want to edit index.html and loader.js as needed.
 See README.md for more details.
 */
