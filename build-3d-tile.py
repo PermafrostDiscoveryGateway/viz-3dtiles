@@ -9,6 +9,7 @@ import os
 import json
 import math
 
+
 # The file to convert to b3dm and the path to save the b3dm to
 file="/data/example.shp"
 save_to="run-cesium/tilesets/build-3d-tile-output"
@@ -21,7 +22,7 @@ print("Converting ", filepath)
 save_as_filename="model"
 
 # Limit the number of features converted. Useful for testing huge files.
-max_features=200
+max_features=1500
 
 tileset = {
     "asset" : {
@@ -47,11 +48,8 @@ final_epsg = 4978
 
 # Convert polygon points from xy to xyz
 tolerance = 0.000001 # The simplification tolerance level
-point_x_values_4978 = [] # Used to calculate max/min for bounding box
-point_y_values_4978 = [] # Used to calculate max/min for bounding box
-point_z_values_4978 = [] # Used to calculate max/min for bounding box
 
-#gdf['geometry'] = gdf['geometry'].simplify(tolerance)
+gdf['geometry'] = gdf['geometry'].simplify(tolerance)
 
 row = 0
 for feature in gdf.iterfeatures():
@@ -68,6 +66,8 @@ for feature in gdf.iterfeatures():
 # the Cesium-internal earth-centered, earth-fixed (ECEF) 4978 CRS
 # See https://medium.com/terria/georeferencing-3d-models-for-cesium-7ccf609ee2ef
 gdf_4978 = gdf.to_crs(epsg=4978)
+
+
 min_tileset_z=9e99
 max_tileset_z=-9e99
 geometries=[]
@@ -122,17 +122,20 @@ gltf = GlTF.from_binary_arrays(geometries, transform=transform, batched=True)
 #with open(save_as+".glb", "bw") as f:
 #   f.write(bytes(gltf.to_array()))
 
+
 # --- TODO: Create tileset JSON file ---
 print(f"boundingVolume box for Cesium tile - EPSG ", final_epsg)
 
-bounding_volume_box = [(min(gdf_4978.bounds.minx) + max(gdf_4978.bounds.maxx))/2, 
-                       (min(gdf_4978.bounds.miny) + max(gdf_4978.bounds.maxy))/2, 
+minx=min(gdf_4978.bounds.minx)
+maxx=max(gdf_4978.bounds.maxx)
+miny=min(gdf_4978.bounds.miny)
+maxy=max(gdf_4978.bounds.maxy)
+bounding_volume_box = [(minx + maxx)/2, 
+                       (miny + maxy)/2, 
                        (min_tileset_z + max_tileset_z)/2,
-                       max(gdf_4978.bounds.maxx) - min(gdf_4978.bounds.minx), 0, 0,
-                       0, max(gdf_4978.bounds.maxy) - min(gdf_4978.bounds.miny), 0,
+                       maxx - minx, 0, 0,
+                       0, maxy - miny, 0,
                        0, 0, 0]
-
-pprint(bounding_volume_box)
 
 # Create the content for this tile
 tileset["root"]["content"] = {
@@ -159,4 +162,3 @@ t = B3dm.from_glTF(gltf)
 t.save_as(save_to+"/"+save_as_filename+".b3dm")
 
 print("Done.")
-
