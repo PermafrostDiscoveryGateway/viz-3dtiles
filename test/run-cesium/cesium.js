@@ -18,7 +18,7 @@ scene.globe.depthTestAgainstTerrain = true;
 
 // The tileset created by the build-3d-tile.py script
 var tileset = new Cesium.Cesium3DTileset({
-  url: "tilesets/build-3d-tile-output/tileset.json",
+  url: "tilesets/build-output/tileset.json",
   debugShowBoundingVolume: true,
   debugShowContentBoundingVolume: true,
   debugShowGeometricError: true,

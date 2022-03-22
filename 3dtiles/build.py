@@ -15,7 +15,7 @@ import math
 
 # The file to convert to b3dm and the path to save the b3dm to
 file="/../test/data/example.shp"
-save_to="../test/run-cesium/tilesets/build-3d-tile-output"
+save_to="../test/run-cesium/tilesets/build-output"
 
 directory=os.getcwd()
 filepath=directory+file

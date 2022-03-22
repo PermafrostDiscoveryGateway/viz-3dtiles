@@ -2,7 +2,7 @@
 test/data/*
 !test/data/example.*
 test/run-cesium/tilesets/*
-!test/run-cesium/tilesets/build-3d-tile-output
+!test/run-cesium/tilesets/build-output
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
