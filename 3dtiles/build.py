@@ -1,3 +1,6 @@
+#!/usr/local/opt/python3
+# Viz 3D Tiles from https://github.com/PermafrostDiscoveryGateway/viz-3dtiles
+
 from shapely.geometry import Polygon, MultiPolygon
 from shapely import ops
 import geopandas as gpd
@@ -11,8 +14,8 @@ import math
 
 
 # The file to convert to b3dm and the path to save the b3dm to
-file="/data/example.shp"
-save_to="run-cesium/tilesets/build-3d-tile-output"
+file="/../test/data/example.shp"
+save_to="../test/run-cesium/tilesets/build-3d-tile-output"
 
 directory=os.getcwd()
 filepath=directory+file

@@ -1,6 +1,6 @@
 function start(){// Your access token can be found at: https://cesium.com/ion/tokens.
 
-Cesium.Ion.defaultAccessToken = "YOUR_TOKEN_HERE";
+Cesium.Ion.defaultAccessToken = "YOUR-TOKEN-HERE";
 
 // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
 var Cartesian3 = Cesium.Cartesian3;
@@ -18,7 +18,7 @@ scene.globe.depthTestAgainstTerrain = true;
 
 // The tileset created by the build-3d-tile.py script
 var tileset = new Cesium.Cesium3DTileset({
-  url: "tilesets/tileset.json",
+  url: "tilesets/build-3d-tile-output/tileset.json",
   debugShowBoundingVolume: true,
   debugShowContentBoundingVolume: true,
   debugShowGeometricError: true,
@@ -52,7 +52,7 @@ tilesetFME.style = new Cesium.Cesium3DTileStyle({
   show: true,
 });
 
-viewer.scene.primitives.add(tilesetFME);
+//viewer.scene.primitives.add(tilesetFME);
 viewer.scene.primitives.add(tileset);
 
 
