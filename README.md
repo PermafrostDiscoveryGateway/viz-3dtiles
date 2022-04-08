@@ -15,9 +15,20 @@ pip install -r requirements.txt
 ```
 
 ## Usage
-1. Change the input file path (`file`) in `3dtiles/build.py` to the file path of your .shp file (or any other vector geometry file that can be read by `geopandas`)
-2. Run `build.py`:
+1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to process a `.shp` file into a `.b3dm` 3D model:
+
+```python
+tile = Cesium3DTile()
+tile.save_to="~/my-tilesets/lakes/"
+tile.from_file(filepath="~/my-data/lakes.shp")
 ```
-python3 build.py
+
+2. Create an instance of the `Cesium3DTileset` class to contain that tile:
+
+```python
+tileset = Cesium3DTileset(tiles=[tile])
+tileset.save_to="~/my-tilesets/lakes/"
+tileset.write_file()
 ```
-3. The output will be saved as `tileset.json` and `model.b3dm` in `test/run-cesium/tilesets/build-output`
+
+See [/test/test.py](test/test.py) which creates an example tileset.
