@@ -24,6 +24,10 @@ class Cesium3DTile:
         self.min_tileset_z = 0
         self.max_tileset_z = 0
 
+        # A dictionary of key:value pairs for which matching polygons will be removed.
+        # e.g { centroid_within_tile: True }
+        self.filter_by_attributes = {}
+
 
     def from_file(self, filepath, crs="EPSG:3413"):
         """
@@ -39,6 +43,9 @@ class Cesium3DTile:
 
         self.geodataframe = gdf
 
+        #Filter out polygons as needed
+        self.filter_polygons()
+
         if gdf.has_z.all() == False:
             self.add_z()
 
@@ -46,7 +53,6 @@ class Cesium3DTile:
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
-        #self.tileset_stuff()
         return
     
     def from_polygons(self, polygons, crs="EPSG:4326"):
@@ -61,6 +67,15 @@ class Cesium3DTile:
         self.create_b3dm()
        # self.tileset_stuff()
     
+    def filter_polygons(self):
+        #Filter polygons with a certain attribute
+        for key, value in self.filter_by_attributes.items():
+            try: 
+                self.geodataframe = self.geodataframe[self.geodataframe[key] == value]
+            except:
+                print("Not filtering out polygons for attribute " + key);
+
+
     def add_z(self, z=0.1):
 
         row = 0

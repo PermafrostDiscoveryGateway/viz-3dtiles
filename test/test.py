@@ -7,7 +7,8 @@ save_to=os.path.dirname(os.path.abspath(__file__))+"/run-cesium/tilesets/test/"
 
 # Create a 3D Tile from the Example shp file
 tile = Cesium3DTile()
-tile.from_file(filepath=save_to+"data/example.shp")
+tile.filter_by_attributes={"centroid_within_tile": True}
+tile.from_file(filepath=os.path.dirname(os.path.abspath(__file__))+"/data/example.shp")
 
 # Create a tileset to contain the 3D Tile just created
 tileset = Cesium3DTileset(tiles=[tile])
