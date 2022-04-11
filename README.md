@@ -11,7 +11,7 @@ conda env create -n viz_3d --file environment.yml
 conda activate viz_3d
 ```
 
-## Pip install
+### Pip install
 
 1. Create a Python 3 virtual environment:
 
@@ -44,4 +44,8 @@ tileset.save_to="~/my-tilesets/lakes/"
 tileset.write_file()
 ```
 
+## Demo
+
 See [/test/test.py](test/test.py) which creates an example tileset.
+
+Usage: from the base directory (`./viz-3dtiles`) run `python test/test.py`
