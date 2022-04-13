@@ -12,7 +12,6 @@ class Cesium3DTile:
     FILE_EXT = ".b3dm"
 
     def __init__(self):
-        self.z = 0.1
         self.geodataframe = GeoDataFrame()
         self.save_as = "model"
         self.save_to = os.path.dirname(os.path.abspath(__file__))+r"../" # base dir of repo
@@ -20,6 +19,7 @@ class Cesium3DTile:
         self.geometries = []
         self.gltf = None
         self.debugCreateGLB = False
+        self.batch_table = None
         self.max_width = 0
         self.min_tileset_z = 0
         self.max_tileset_z = 0
@@ -79,7 +79,7 @@ class Cesium3DTile:
                 print("Not filtering out polygons for attribute " + key);
 
 
-    def add_z(self, z=0.1):
+    def add_z(self, z=10.0):
 
         row = 0
         for feature in self.geodataframe.iterfeatures():
@@ -87,7 +87,7 @@ class Cesium3DTile:
                 break
 
             # Build the new PolygonZ with a static z value
-            polygon = ops.transform(lambda x, y: (x, y, 1), Polygon(feature["geometry"]["coordinates"][0]))
+            polygon = ops.transform(lambda x, y: (x, y, z), Polygon(feature["geometry"]["coordinates"][0]))
 
             self.geodataframe["geometry"][row] = polygon
             row += 1
@@ -163,12 +163,32 @@ class Cesium3DTile:
         
         self.gltf = gltf
             
+    def create_batch_table(self):
+        print("Creating Batch table")
+
+        bt = BatchTable()
+
+        attributes = self.geodataframe.columns.drop("geometry")
+        for attr in attributes:
+            print("Adding " + attr)
+            values=[]
+            for v in self.geodataframe[attr].values:
+                values.append(v)
+            bt.header.add_property_from_array(propertyName=attr, array=values)
+
+        self.batch_table = bt
+
+        return bt
+
+
+
+            
     def create_b3dm(self):
 
         # --- Convert to b3dm -----
         # create a b3dm tile_content directly from the glTF.
         print("Creating b3dm file")
-        t = B3dm.from_glTF(self.gltf)
+        t = B3dm.from_glTF(self.gltf, bt=self.create_batch_table())
 
         # to save our tile as a .b3dm file
         t.save_as(self.save_to+ self.get_filename())
