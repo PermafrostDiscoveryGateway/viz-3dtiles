@@ -6,6 +6,7 @@ from shapely import ops
 from py3dtiles import GlTF, TriangleSoup, B3dm
 import numpy as np
 import json
+import os
 class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
@@ -14,7 +15,7 @@ class Cesium3DTile:
         self.z = 0.1
         self.geodataframe = GeoDataFrame()
         self.save_as = "model"
-        self.save_to = "~/"
+        self.save_to = os.path.dirname(os.path.abspath(__file__))+r"../" # base dir of repo
         self.max_features = 1500
         self.geometries = []
         self.gltf = None
