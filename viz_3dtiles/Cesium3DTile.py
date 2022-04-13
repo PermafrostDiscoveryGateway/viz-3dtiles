@@ -6,7 +6,6 @@ from shapely import ops
 from py3dtiles import GlTF, TriangleSoup, B3dm
 import numpy as np
 import json
-
 class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
@@ -54,18 +53,21 @@ class Cesium3DTile:
         self.create_gltf()
         self.create_b3dm()
         return
-    
-    def from_polygons(self, polygons, crs="EPSG:4326"):
-        d = {'col1': ['name1'], 'geometry': [polygons]}
-        gdf=geopandas.GeoDataFrame(d, crs=crs)
-        self.geodataframe=gdf
 
-        self.add_z()
+    
+    def from_geodataframe(self, gdf):
+        self.geodataframe = gdf
+
+        #Filter out polygons as needed
+        self.filter_polygons()
+
+        if gdf.has_z.all() == False:
+            self.add_z()
+
         self.to_epsg()
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
-       # self.tileset_stuff()
     
     def filter_polygons(self):
         #Filter polygons with a certain attribute
