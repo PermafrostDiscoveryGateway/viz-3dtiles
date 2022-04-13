@@ -56,7 +56,7 @@ class Cesium3DTileset:
 
         # Create the content for this tile
         tileset["root"]["content"] = {
-            "boundingVolume" : { "box": self.bbox },
+            "boundingVolume" : { "box": self.get_boundingbox() },
             "url": tile.get_filename()
         }
         # Add the bounding box to the root of the tileset
