@@ -1,6 +1,8 @@
 # viz-3dtiles
 
-A Python library for creating Cesium 3D Tilesets. This library uses a forked version of the py3dtiles Python library to convert `.shp` files to `.b3dm` files and creates a `tileset.json` to load into Cesium.
+A Python package for creating Cesium 3D Tilesets. This package uses a forked version of the py3dtiles Python library to convert a `.shp` file to a `.b3dm` file and creates a `tileset.json` to load into Cesium.
+
+This package was developed for the [Permafrost Discovery Gateway](https://permafrost.arcticdata.io), an NSF-funded research project whose mission is to create an online platform for analysis and visualization of permafrost big imagery products to enable discovery and knowledge-generation.
 
 ## Install via Conda or pip
 
