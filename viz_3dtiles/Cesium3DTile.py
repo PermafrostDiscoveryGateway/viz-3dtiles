@@ -7,6 +7,7 @@ from py3dtiles import GlTF, TriangleSoup, B3dm
 import numpy as np
 import json
 import os
+import uuid
 class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
@@ -23,6 +24,12 @@ class Cesium3DTile:
         self.max_width = 0
         self.min_tileset_z = 0
         self.max_tileset_z = 0
+
+        # A set of dynamically-generated properties to add to the 3DTile BatchTable.
+        # Any properties already set via the original file or Geodataframe will be kept intact.
+        self.batch_table_uuid=True
+        self.batch_table_centroid=False
+        self.batch_table_area=False
 
         # A dictionary of key:value pairs for which matching polygons will be removed.
         # e.g { centroid_within_tile: True }
@@ -168,7 +175,15 @@ class Cesium3DTile:
 
         bt = BatchTable()
 
+        if self.batch_table_uuid == True:
+            values=[]
+            for i in range(0, len(self.geodataframe)):
+                u=uuid.uuid4()
+                values.append(u.urn)
+            self.geodataframe["uuid"] = values
+
         attributes = self.geodataframe.columns.drop("geometry")
+
         for attr in attributes:
             print("Adding " + attr)
             values=[]
