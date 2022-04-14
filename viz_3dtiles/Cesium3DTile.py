@@ -89,8 +89,7 @@ class Cesium3DTile:
             except:
                 print("Not filtering out polygons for attribute " + key);
 
-
-    def add_z(self, z=10.0):
+    def add_z(self, z=0.2):
 
         row = 0
         for feature in self.geodataframe.iterfeatures():
