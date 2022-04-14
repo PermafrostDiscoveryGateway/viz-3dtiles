@@ -15,7 +15,7 @@ class Cesium3DTile:
         self.geodataframe = GeoDataFrame()
         self.save_as = "model"
         self.save_to = os.path.dirname(os.path.abspath(__file__))+r"../" # base dir of repo
-        self.max_features = 1500
+        self.max_features = 99999999999
         self.geometries = []
         self.gltf = None
         self.debugCreateGLB = False
