@@ -78,6 +78,10 @@ class Cesium3DTile:
         self.create_b3dm()
     
     def filter_polygons(self):
+        #Filter out polygons beyond the maximum
+        if self.max_features is not None:
+            self.geodataframe = self.geodataframe[0:self.max_features]
+
         #Filter polygons with a certain attribute
         for key, value in self.filter_by_attributes.items():
             try: 
@@ -90,8 +94,6 @@ class Cesium3DTile:
 
         row = 0
         for feature in self.geodataframe.iterfeatures():
-            if row > self.max_features-1:
-                break
 
             # Build the new PolygonZ with a static z value
             polygon = ops.transform(lambda x, y: (x, y, z), Polygon(feature["geometry"]["coordinates"][0]))
@@ -108,8 +110,6 @@ class Cesium3DTile:
         max_width=-9e99
         row = 0
         for feature in self.geodataframe.iterfeatures():
-            if row > self.max_features-1:
-                break
 
             print(f"Processing {row + 1} of {len(self.geodataframe)} in EPSG", self.CESIUM_EPSG)
 
