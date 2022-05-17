@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from pathlib import Path
 
 class Cesium3DTileset:
 
@@ -91,9 +92,14 @@ class Cesium3DTileset:
         return self.save_to + self.save_as + "." + self.FILE_EXT
     
     def write_file(self):
-        
-        # Writing to sample.json
+        # Write to sample.json
+
+        # create file if doesn't exist.
+        filepath = Path(self.get_filename())
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.touch(exist_ok=True)
+
         with open(self.get_filename(), "w") as outfile:
             outfile.write(self.to_json())
         
-        print("Tileset saved to " + self.get_filename())
+        # print("Tileset saved to " + self.get_filename())
