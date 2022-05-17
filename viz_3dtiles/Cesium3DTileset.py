@@ -12,6 +12,12 @@ class Cesium3DTileset:
         self.bbox = []
         return
 
+    def set_json_filename(self, filename):
+        '''
+        Set the filename of the tileset.json
+        '''
+        self.save_as = filename
+
     def add_tile(self, tile):
         self.tiles.append(tile)
     
