@@ -17,6 +17,17 @@ class Cesium3DTileset:
         Set the filename of the tileset.json
         '''
         self.save_as = filename
+    
+    def set_save_to_path(self, path):
+        """
+        Set the filepath, but not the filename or extension, of tileset.json. If the path does not exist, it will be created (handled by package py3dtiles)
+
+        Parameters
+        ----------
+        path : string
+            The destination filepath of the json.
+        """
+        self.save_to = path
 
     def add_tile(self, tile):
         self.tiles.append(tile)
