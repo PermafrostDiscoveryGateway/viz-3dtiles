@@ -35,6 +35,46 @@ class Cesium3DTile:
         # e.g { centroid_within_tile: True }
         self.filter_by_attributes = {}
 
+    def set_save_to_path(self, path):
+        """
+        The filepath to save the 3DTile. If the path does not exist, it will be created (handled by package py3dtiles)
+
+        Parameters
+        ----------
+        path : string
+            The destination of the 3DTile.
+        """
+        self.save_to = path
+
+    def set_b3dm_name(self, name):
+        """
+        Set the filename, not filepath or extension, of the 3DTile.
+
+        Parameters
+        ----------
+        name : string
+            The filename (not path) of the 3DTile.
+        """
+        self.save_as = name
+
+    def get_all_properties(self):
+        """
+        Get all proerties of the Cesium3DTile class as a dictionary.
+        """
+        return {
+            "z": self.z,
+            "geodataframe": self.geodataframe,
+            "save_as": self.save_as,
+            "save_to": self.save_to,
+            "max_features": self.max_features,
+            "geometries": self.geometries,
+            "gltf": self.gltf,
+            "debugCreateGLB": self.debugCreateGLB,
+            "max_width": self.max_width,
+            "min_tileset_z": self.min_tileset_z,
+            "max_tileset_z": self.max_tileset_z,
+            "filter_by_attributes": self.filter_by_attributes,
+        }
 
     def from_file(self, filepath, crs="EPSG:3413"):
         """
