@@ -3,7 +3,7 @@ import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon
 from shapely import ops
-from py3dtiles import GlTF, TriangleSoup, B3dm
+from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
 import numpy as np
 import json
 import os
@@ -150,14 +150,14 @@ class Cesium3DTile:
         row = 0
         for feature in self.geodataframe.iterfeatures():
 
-            print(f"Processing {row + 1} of {len(self.geodataframe)} in EPSG", self.CESIUM_EPSG)
+            # print(f"Processing {row + 1} of {len(self.geodataframe)} in EPSG", self.CESIUM_EPSG)
 
             # Create a multipolygon for only this polygon feature
             polygon=Polygon(feature["geometry"]["coordinates"][0])
             multipolygon = MultiPolygon([polygon])
 
             # use the TriangleSoup helper class to transform the wkb into arrays of points and normals
-            print(f"Tesselating polygon to generate position and normal arrays")
+            # print(f"Tesselating polygon to generate position and normal arrays")
             ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
             positions = ts.getPositionArray()
             normals = ts.getNormalArray()
