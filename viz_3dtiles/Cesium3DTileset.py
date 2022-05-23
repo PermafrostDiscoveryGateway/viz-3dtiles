@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from pathlib import Path
 
 class Cesium3DTileset:
 
@@ -11,6 +12,23 @@ class Cesium3DTileset:
         self.save_to="~/"
         self.bbox = []
         return
+
+    def set_json_filename(self, filename):
+        '''
+        Set the filename of the tileset.json
+        '''
+        self.save_as = filename
+    
+    def set_save_to_path(self, path):
+        """
+        Set the filepath, but not the filename or extension, of tileset.json. If the path does not exist, it will be created (handled by package py3dtiles)
+
+        Parameters
+        ----------
+        path : string
+            The destination filepath of the json.
+        """
+        self.save_to = path
 
     def add_tile(self, tile):
         self.tiles.append(tile)
@@ -74,9 +92,14 @@ class Cesium3DTileset:
         return self.save_to + self.save_as + "." + self.FILE_EXT
     
     def write_file(self):
-        
-        # Writing to sample.json
+        # Write to sample.json
+
+        # create file if doesn't exist.
+        filepath = Path(self.get_filename())
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.touch(exist_ok=True)
+
         with open(self.get_filename(), "w") as outfile:
             outfile.write(self.to_json())
         
-        print("Tileset saved to " + self.get_filename())
+        # print("Tileset saved to " + self.get_filename())
