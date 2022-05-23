@@ -233,7 +233,7 @@ class Cesium3DTile:
             values=[]
             for v in self.geodataframe[attr].values:
                 values.append(str(v))
-            bt.add_property_from_array(propertyName=attr, array=values)
+            bt.header.add_property_from_array(propertyName=attr, array=values)
 
         self.batch_table = bt
 
