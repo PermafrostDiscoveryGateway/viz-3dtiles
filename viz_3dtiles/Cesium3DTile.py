@@ -3,11 +3,12 @@ import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon
 from shapely import ops
-from py3dtiles import GlTF, TriangleSoup, B3dm
+from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
 import numpy as np
 import json
 import os
 import uuid
+
 class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
@@ -24,7 +25,7 @@ class Cesium3DTile:
         self.max_width = 0
         self.min_tileset_z = 0
         self.max_tileset_z = 0
-
+        
         # A set of dynamically-generated properties to add to the 3DTile BatchTable.
         # Any properties already set via the original file or Geodataframe will be kept intact.
         self.batch_table_uuid=True
@@ -89,16 +90,20 @@ class Cesium3DTile:
             except:
                 print("Not filtering out polygons for attribute " + key);
 
-    def add_z(self, z=0.2):
+    def add_z(self, z=5.2):
 
-        row = 0
+        i = 0
         for feature in self.geodataframe.iterfeatures():
+
+            row = self.geodataframe.index[i]
 
             # Build the new PolygonZ with a static z value
             polygon = ops.transform(lambda x, y: (x, y, z), Polygon(feature["geometry"]["coordinates"][0]))
 
+            #polygon = polygon.simplify(0.5, preserve_topology=False)
+
             self.geodataframe["geometry"][row] = polygon
-            row += 1
+            i += 1
 
     def to_epsg(self, epsg=CESIUM_EPSG):
         self.geodataframe = self.geodataframe.to_crs(epsg=epsg)
@@ -168,7 +173,7 @@ class Cesium3DTile:
                 f.write(bytes(gltf.to_array()))
         
         self.gltf = gltf
-            
+
     def create_batch_table(self):
         print("Creating Batch table")
 
@@ -187,8 +192,8 @@ class Cesium3DTile:
             print("Adding " + attr)
             values=[]
             for v in self.geodataframe[attr].values:
-                values.append(v)
-            bt.header.add_property_from_array(propertyName=attr, array=values)
+                values.append(str(v))
+            bt.add_property_from_array(propertyName=attr, array=values)
 
         self.batch_table = bt
 
