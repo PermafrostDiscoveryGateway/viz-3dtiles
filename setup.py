@@ -9,4 +9,10 @@ setup(name='viz_3dtiles',
       license='Apache License Version 2.0',
       packages=['viz_3dtiles'],
       python_requires='>=3.5',
+      install_requires=[
+        'numpy >= 1.20, < 2.0',
+        'pandas >= 1.4, < 2.0',
+        'geopandas >= 0.10, < 1.0',
+        'pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git#egg=pdgpy3dtiles'
+      ],
       zip_safe=False)
