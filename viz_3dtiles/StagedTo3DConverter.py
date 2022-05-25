@@ -147,7 +147,6 @@ class StagedTo3DConverter():
             "asset": {
                 "version": "0.0"
             },
-            "geometricError": None,
             "root": {
                 "boundingVolume": {"box": []},
                 "geometricError": None,
@@ -219,12 +218,11 @@ class StagedTo3DConverter():
             0, 0, 0, length, 0, 0, 0, 0]
 
         # Calculate the parent geometric error
-        parent_geometric_error = max(all_ges)
+        parent_geometric_error = sum(all_ges)
 
         # Update the tileset
         tileset['root']['boundingVolume']['box'] = parent_bounding_volume
         tileset['root']['geometricError'] = parent_geometric_error
-        tileset['geometricError'] = parent_geometric_error
 
         # Write the tileset.json
         with open(parent_json_path, 'w') as f:
