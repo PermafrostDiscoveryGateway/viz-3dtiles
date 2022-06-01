@@ -9,7 +9,7 @@ class Cesium3DTileset:
     FILE_EXT="json"
 
     def __init__(self, tiles=[]):
-        self.tiles = tiles
+        self.tiles = [tiles]
         self.save_as="tileset"
         self.save_to="~/"
         self.bbox = []
@@ -36,7 +36,7 @@ class Cesium3DTileset:
         self.tiles.append(tile)
     
     def get_boundingbox(self):
-        print(f"boundingVolume box for Cesium tileset")
+        # print(f"boundingVolume box for Cesium tileset")
 
         # TODO: Support tilesets with more than one tile. Iterate over tiles and find bounding box of all.
         tile = self.tiles[0]

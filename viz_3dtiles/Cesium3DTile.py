@@ -205,7 +205,7 @@ class Cesium3DTile:
 
         transform = transform.flatten('F')
 
-        print("creating glTF")
+        # print("creating glTF")
         gltf = GlTF.from_binary_arrays(self.geometries, transform=transform, batched=True)
 
         if self.debugCreateGLB == True:
@@ -215,7 +215,7 @@ class Cesium3DTile:
         self.gltf = gltf
 
     def create_batch_table(self):
-        print("Creating Batch table")
+        # print("Creating Batch table")
 
         bt = BatchTable()
 
@@ -229,7 +229,7 @@ class Cesium3DTile:
         attributes = self.geodataframe.columns.drop("geometry")
 
         for attr in attributes:
-            print("Adding " + attr)
+            # print("Adding " + attr)
             values=[]
             for v in self.geodataframe[attr].values:
                 values.append(str(v))
@@ -246,7 +246,7 @@ class Cesium3DTile:
 
         # --- Convert to b3dm -----
         # create a b3dm tile_content directly from the glTF.
-        print("Creating b3dm file")
+        # print("Creating b3dm file")
         t = B3dm.from_glTF(self.gltf, bt=self.create_batch_table())
 
         # to save our tile as a .b3dm file
