@@ -5,6 +5,7 @@ from pathlib import Path
 from statistics import mean
 import numpy as np
 from scipy.spatial import ConvexHull
+import shapely
 
 
 class Cesium3DTileset:
@@ -63,25 +64,34 @@ class Cesium3DTileset:
 
         return bounding_volume_box
 
-    def get_min_bounding_rect(gdf):
+    def get_min_bounding_rect(self):
         """
-            Find the smallest bounding rectangle for a set of polygons in a GeoDataFrame.
-            Returns a set of points representing the corners of the bounding box.
-            Adapted from https://stackoverflow.com/a/33619018
+            Find the smallest bounding rectangle for a set of polygons in a
+            GeoDataFrame. Returns a set of points representing the corners of
+            the bounding box for the minimum bounding rectangle. Adapted from
+            https://stackoverflow.com/a/33619018
 
-            Parameters
-            ----------
-
-            gdf : GeoDataFrame
-                A GeoDataFrame containing polygons.
 
             Returns
             -------
-            A set of points representing the corners of the bounding box.
+            A set of points representing the corners of the bounding box for
+            the minimum bounding rectangle.
         """
 
+        # TODO: Support tilesets with more than one tile. Iterate over tiles
+        # and find bounding box of all.
+        tile = self.tiles[0]
+        gdf = tile.geodataframe
+
+        # Get the bounding rectangle for just the x and y coordinates
+        # (not z)
+        geoms2D = gdf.geometry.apply(
+            lambda x: shapely.wkb.loads(
+                shapely.wkb.dumps(
+                    x, output_dimension=2)))
+
         # Get all points from all polygons, as a nx2 matrix of coordinates
-        coords = gdf.geometry.apply(lambda x: x.exterior.coords)
+        coords = geoms2D.apply(lambda x: x.exterior.coords)
         points = np.vstack([p for p in coords])
 
         pi2 = np.pi / 2.
