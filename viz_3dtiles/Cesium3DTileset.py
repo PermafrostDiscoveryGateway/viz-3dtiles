@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from statistics import mean
 import numpy as np
-import open3d as o3d
+from .BoundingVolumeBox import BoundingVolumeBox
 
 
 class Cesium3DTileset:
@@ -62,21 +62,8 @@ class Cesium3DTileset:
         # TODO: Support tilesets with more than one tile.
         tile = self.tiles[0]
         gdf = tile.geodataframe
-        coords = gdf.geometry.apply(lambda x: x.exterior.coords)
-        points = np.vstack([p for p in coords])
-
-        points3d = o3d.utility.Vector3dVector(points)
-        obb = o3d.geometry.OrientedBoundingBox.create_from_points(points3d)
-
-        centroid = obb.center
-        ext = obb.extent / 2.0
-        rotation = obb.R
-
-        x = rotation.dot([ext[0], 0, 0])
-        y = rotation.dot([0, ext[1], 0])
-        z = rotation.dot([0, 0, ext[2]])
-
-        return np.concatenate([centroid,x,y,z]).tolist()
+        bv = BoundingVolumeBox.from_gdf(gdf)
+        return bv.to_list()
 
     def to_json(self):
 
