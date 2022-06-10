@@ -1,5 +1,6 @@
 import numpy as np
 import open3d as o3d
+from shapely.geometry import Polygon
 
 
 class BoundingVolumeBox(object):
@@ -9,6 +10,7 @@ class BoundingVolumeBox(object):
     """
 
     CESIUM_EPSG = 4978
+    JSON_KEY = 'box'
 
     def __init__(self, values):
         """
@@ -82,6 +84,12 @@ class BoundingVolumeBox(object):
         num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')
         if num_non_polys > 0:
             raise ValueError('GeoDataFrame geometry can only contain polygons')
+
+        # Check if there are z coordinates and add 0 if not
+        if gdf.has_z.all() == False:
+            gdf['geometry'] = gdf['geometry'].apply(lambda poly: 
+                Polygon([(x, y, 0) for x, y in poly.exterior.coords])
+            )
 
         # Check that the CRS is not None
         if gdf.crs is None:
@@ -210,6 +218,9 @@ class BoundingVolumeBox(object):
             A 12 element list representing the box.
         """
         return self.to_array().tolist()
+
+    def to_json_dict(self):
+        return {self.JSON_KEY: self.to_list()}
 
     @staticmethod
     def __check_list_create_box(list_or_box):

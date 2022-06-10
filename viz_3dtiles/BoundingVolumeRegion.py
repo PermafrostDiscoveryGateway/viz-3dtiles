@@ -13,6 +13,7 @@ class BoundingVolumeRegion(object):
     """
 
     CESIUM_EPSG = 4979
+    JSON_KEY = 'region'
 
     def __init__(self, values):
         """
@@ -250,6 +251,9 @@ class BoundingVolumeRegion(object):
             A 12 element list representing the region.
         """
         return self.to_array().tolist()
+
+    def to_json_dict(self):
+        return {self.JSON_KEY: self.to_list()}
 
     @staticmethod
     def __check_list_create_region(list_or_region):

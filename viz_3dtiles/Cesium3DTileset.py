@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from statistics import mean
 import numpy as np
-from .BoundingVolumeBox import BoundingVolumeBox
+from .BoundingVolume import BoundingVolume
 
 
 class Cesium3DTileset:
@@ -12,6 +12,7 @@ class Cesium3DTileset:
     FILE_EXT = "json"
 
     def __init__(self, tiles=[]):
+
         self.tiles = [tiles]
         self.save_as = "tileset"
         self.save_to = "~/"
@@ -40,7 +41,7 @@ class Cesium3DTileset:
     def add_tile(self, tile):
         self.tiles.append(tile)
 
-    def get_boundingbox(self):
+    def get_bounding_volume(self):
         """
             Find the oriented bounding box for the tile. Return it an array of
             12 numbers that define an oriented bounding box in a right-handed
@@ -62,8 +63,7 @@ class Cesium3DTileset:
         # TODO: Support tilesets with more than one tile.
         tile = self.tiles[0]
         gdf = tile.geodataframe
-        bv = BoundingVolumeBox.from_gdf(gdf)
-        return bv.to_list()
+        return BoundingVolume.from_gdf(gdf)
 
     def to_json(self):
 
@@ -83,12 +83,14 @@ class Cesium3DTileset:
         }
 
         # Create the content for this tile
+        bv = self.get_bounding_volume().to_json_dict()
+        
         tileset["root"]["content"] = {
-            "boundingVolume": {"box": self.get_boundingbox()},
-            "url": tile.get_filename()
+            "boundingVolume": bv,
+            "uri": tile.get_filename()
         }
         # Add the bounding box to the root of the tileset
-        tileset["root"]["boundingVolume"] = {"box": self.get_boundingbox()}
+        tileset["root"]["boundingVolume"] = bv
         tileset["geometricError"] = tile.max_width
         tileset["root"]["geometricError"] = tile.max_width
 
@@ -190,7 +192,7 @@ class Cesium3DTileset:
             # tileset.json file. URL in child JSON is just the filename + ext
             # of the B3DM file (not the full path). Assume the child JSON is
             # saved in the same directory as the child B3DM.
-            child_filename = j["root"]["content"]["url"]
+            child_filename = j["root"]["content"]["uri"]
             child_fullpath = os.path.join(
                 os.path.dirname(json_path), child_filename)
             rel_uri = os.path.relpath(child_fullpath, save_to)
