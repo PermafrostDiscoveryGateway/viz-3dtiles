@@ -10,13 +10,13 @@ class BoundingVolumeBox(object):
 
     CESIUM_EPSG = 4978
 
-    def __init__(self, box):
+    def __init__(self, values):
         """
         Initialize the box with a 12 element array.
 
         Parameters
         ----------
-        box : list
+        values : list
             A list of 12 elements that define the box as per Cesium's 3DTileset
             specification, where: The first three elements define the x, y, and
             z values for the center of the box, the next three elements (with
@@ -28,13 +28,13 @@ class BoundingVolumeBox(object):
         """
 
         # Check that list is a list
-        assert isinstance(box, list)
+        assert isinstance(values, list)
         # Check that array is a 12 element array
-        assert len(box) == 12
-        self.center = box[0:3]
-        self.xAxis = box[3:6]
-        self.yAxis = box[6:9]
-        self.zAxis = box[9:12]
+        assert len(values) == 12
+        self.center = values[0:3]
+        self.xAxis = values[3:6]
+        self.yAxis = values[6:9]
+        self.zAxis = values[9:12]
 
     @classmethod
     def from_points(cls, points):
@@ -147,7 +147,7 @@ class BoundingVolumeBox(object):
 
         return corners
 
-    def add(self, other):
+    def add(self, other, inplace=False):
         """
         Add a box to this box.
 
@@ -164,7 +164,11 @@ class BoundingVolumeBox(object):
         other_corners = other.get_corners()
         new_points = np.concatenate([corners, other_corners])
         new_box = BoundingVolumeBox.from_points(new_points)
-        self.update(new_box)
+        
+        if inplace:
+           self.update(new_box)
+        else:
+            return new_box
 
     def update(self, new_box):
         """
@@ -198,7 +202,7 @@ class BoundingVolumeBox(object):
 
     def to_list(self):
         """
-        Convert the box to a 12 element array.
+        Convert the box to a 12 element list.
 
         Returns
         -------
