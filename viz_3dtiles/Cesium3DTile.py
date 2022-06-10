@@ -2,10 +2,8 @@
 import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon
-from shapely import ops
 from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
 import numpy as np
-import json
 import os
 import uuid
 
@@ -131,19 +129,16 @@ class Cesium3DTile:
                 print("Not filtering out polygons for attribute " + key);
 
     def add_z(self, z=5.2):
+        """
+            Add a z-coordinate to the (2D) geodataframe.
 
-        i = 0
-        for feature in self.geodataframe.iterfeatures():
-
-            row = self.geodataframe.index[i]
-
-            # Build the new PolygonZ with a static z value
-            polygon = ops.transform(lambda x, y: (x, y, z), Polygon(feature["geometry"]["coordinates"][0]))
-
-            #polygon = polygon.simplify(0.5, preserve_topology=False)
-
-            self.geodataframe["geometry"][row] = polygon
-            i += 1
+            Parameters
+            ----------
+            z : float
+                The z-coordinate to add to the geodataframe (height in meters).
+        """
+        self.geodataframe['geometry'] = self.geodataframe['geometry'].apply(
+            lambda poly: Polygon([(x, y, z) for x, y in poly.exterior.coords]))
 
     def to_epsg(self, epsg=CESIUM_EPSG):
         self.geodataframe = self.geodataframe.to_crs(epsg=epsg)
