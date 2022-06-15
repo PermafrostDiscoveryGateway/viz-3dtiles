@@ -1,7 +1,5 @@
-
-from .BoundingVolume import BoundingVolume
 import json
-
+from .BoundingVolume import BoundingVolume
 
 class Base():
     """
@@ -287,15 +285,15 @@ class Tile(Base):
         """
         Parameters
         ----------
-        boundingVolume : BoundingVolume
+        boundingVolume : BoundingVolume or list
             The bounding volume that encloses the tile.
 
-        viewerRequestVolume : BoundingVolume
+        viewerRequestVolume : BoundingVolume or list
             Optional bounding volume that defines the volume the viewer must be
             inside of before the tile's content will be requested and before
             the tile will be refined based on geometricError.
 
-        geometricError : float
+        geometricError : float or int
             The error, in meters, introduced if this tile is rendered and its
             children are not. At runtime, the geometric error is used to
             compute screen space error (SSE), i.e., the error measured in
@@ -319,11 +317,11 @@ class Tile(Base):
             scales the `geometricError` by the maximum scaling factor from the
             matrix.
 
-        content :
+        content : Content or dict
             Metadata about the tile's content and a link to the content. When
             this is omitted the tile is just used for culling.
 
-        children : list of Tile
+        children : list of Tile or dict
             An array of objects that define child tiles. Each child tile
             content is fully enclosed by its parent tile's bounding volume and,
             generally, has a geometricError less than its parent tile's
@@ -370,8 +368,7 @@ class Tile(Base):
                 child = children[i]
                 if isinstance(child, dict):
                     children[i] = Tile(**child)
-                    child = children[i]  # ? is this necessary?
-                if not isinstance(child, Tile):
+                if not isinstance(children[i], Tile):
                     raise ValueError('children must be a list of Tile objects')
 
         self.boundingVolume = boundingVolume
@@ -406,6 +403,9 @@ class Tile(Base):
         if self.content:
             self.content.validate()
 
+        # TODO: ensure that root tile BoundingVolume completely encloses the
+        # content BoundingVolume
+
         # Validate children
         if self.children:
             for child in self.children:
@@ -424,6 +424,65 @@ class Tile(Base):
             del data['refine']
         return data
 
+    def add_children(self, children, bv=None):
+        """
+        Add children to the tile.
+
+        Parameters
+        ----------
+        children : list of Tile or dict
+            An array of objects that define child tiles.
+        bv : None or "update" or "replace"
+            How to update the tile's bounding volume as children are added.
+            If None, the bounding volume is not changed. If "update", the
+            children bounding volumes are added to the tile's bounding volume.
+            If "replace", the children's combined bounding volumes replace the
+            tile's current bounding volume. Note that bounding volumes must all
+            be of the same type to be added (i.e., all must be either 'box' or
+            'region').
+        """
+
+        new_bv = None
+        if bv == 'update':
+            new_bv = self.boundingVolume
+    
+        if not isinstance(children, list):
+            raise ValueError('children must be a list')
+        for i in range(len(children)):
+            child = children[i]
+            if isinstance(child, dict):
+                children[i] = Tile(**child)
+                child = children[i]
+            if not isinstance(child, Tile):
+                raise ValueError('children must be a list of Tile objects')
+            if bv is not None:
+                child_bv = child.boundingVolume
+                if child_bv:
+                    new_bv = child_bv if new_bv is None else new_bv.add(child_bv)
+
+        if self.children is None:
+            self.children = []
+        self.children.extend(children)
+
+        if new_bv is not None:
+            self.boundingVolume = new_bv
+
+    def add_content(self, content):
+        """
+        Add content to the tile. This will replace the existing content.
+
+        Parameters
+        ----------
+        content : Content or dict
+            content to add to the tile.
+        """
+
+        if isinstance(content, dict):
+            content = Content(**content)
+        if not isinstance(content, Content):
+            raise ValueError('content must be a Content object')
+
+        self.content = content
 
 class Tileset(Base):
     """
@@ -495,3 +554,35 @@ class Tileset(Base):
         self.root = root
         self.extensionsUsed = extensionsUsed
         self.extensionsRequired = extensionsRequired
+
+    def add_children(self, children, bv=None):
+        """
+        Add children to the root of the tileset.
+            
+        Parameters
+        ----------
+        children : list of Tile or dict
+            An array of objects that define child tiles.
+        bv : None or "update" or "replace"
+            How to update the tileset's bounding volume as children are added.
+            If None, the bounding volume is not changed. If "update", the
+            children bounding volumes are added to the tileset's bounding volume.
+            If "replace", the children's combined bounding volumes replace the
+            tileset's current bounding volume. Note that bounding volumes must all
+            be of the same type to be added (i.e., all must be either 'box' or
+            'region').
+        """
+        # The root is a Tile object
+        self.root.add_children(children, bv)
+
+    def add_content(self, content, bv=None):
+        """
+        Add content to the root of the tileset.
+            
+        Parameters
+        ----------
+        content : Content or dict
+            An object or dict that gives the uri plus optional metadata about
+            the content (e.g. b3dm or another tileset) of this tileset
+        """
+        self.root.add_content(content, bv)

@@ -8,34 +8,44 @@ class BoundingVolume(object):
 
     def __init__(self, values=None):
         # Check that values is a list or array
-        if not isinstance(values, list) and not isinstance(values, np.ndarray):
-            raise ValueError('BoundingVolume values must be a list')
-        if len(values) == 12:
-            self.__class__ = BoundingVolumeBox
-            self.__init__(values)
-        elif len(values) == 6:
+        if not isinstance(values, (list, np.ndarray, dict)):
+            raise ValueError(
+                'BoundingVolume values must be a list of 6 or 12 numbers, or a'
+                ' dict of west, east, south, and north degrees')
+        if self.is_degree_dict(values) or len(values) == 6:
             self.__class__ = BoundingVolumeRegion
+            self.__init__(values)
+        elif len(values) == 12:
+            self.__class__ = BoundingVolumeBox
             self.__init__(values)
         else:
             raise ValueError(
                 'BoundingVolume values must be a list of 12 numbers '
                 '(to create a box) or 6 numbers (to create a region)')
 
-    @classmethod
+    @staticmethod
+    def is_degree_dict(values):
+        """
+        Check if values is a dict of west, east, south, and north degrees.
+        """
+        degrees = ['west', 'east', 'south', 'north']
+        return isinstance(values, dict) and all(k in values for k in degrees)
+
+    @ classmethod
     def from_points(cls, points, type='box'):
         if type == 'box':
             return BoundingVolumeBox.from_points(points)
         elif type == 'region':
             return BoundingVolumeRegion.from_points(points)
 
-    @classmethod
+    @ classmethod
     def from_gdf(cls, gdf, type='box'):
         if type == 'box':
             return BoundingVolumeBox.from_gdf(gdf)
         elif type == 'region':
             return BoundingVolumeRegion.from_gdf(gdf)
 
-    @classmethod
+    @ classmethod
     def from_json(cls, json_data):
         """
         Parse a dict created from JSON into a BoundingVolume object. The source
@@ -111,7 +121,7 @@ class BoundingVolumeBox(BoundingVolume):
         self.yAxis = values[6:9]
         self.zAxis = values[9:12]
 
-    @classmethod
+    @ classmethod
     def from_points(cls, points):
         """
         Compute the oriented bounding box for a set of 3D points.
@@ -145,7 +155,7 @@ class BoundingVolumeBox(BoundingVolume):
 
         return cls(box)
 
-    @classmethod
+    @ classmethod
     def from_gdf(cls, gdf):
         """
         Create a bounding volume box from a GeoPandas GeoDataFrame. Only
@@ -280,7 +290,7 @@ class BoundingVolumeBox(BoundingVolume):
         return np.concatenate(
             [self.center, self.xAxis, self.yAxis, self.zAxis])
 
-    @staticmethod
+    @ staticmethod
     def __check_list_create_box(list_or_box):
         if isinstance(list_or_box, list):
             list_or_box = BoundingVolumeBox(list_or_box)
@@ -316,6 +326,9 @@ class BoundingVolumeRegion(BoundingVolume):
             above (or below) the WGS 84 ellipsoid.
         """
 
+        if self.is_degree_dict(values):
+            values = self.values_list_from_degrees(**values)
+
         # Check that list is a list
         assert isinstance(values, list)
         # Check that array is a 12 element array
@@ -330,7 +343,54 @@ class BoundingVolumeRegion(BoundingVolume):
         self.min_height = values[4]
         self.max_height = values[5]
 
-    @classmethod
+    @ classmethod
+    def from_degrees(
+            cls,
+            west,
+            south,
+            east,
+            north,
+            min_height=0,
+            max_height=0):
+        """
+        Create a bounding volume region from degrees.
+
+        Parameters
+        ----------
+        west : float
+            The west longitude in degrees.
+        south : float
+            The south latitude in degrees.
+        east : float
+            The east longitude in degrees.
+        north : float
+            The north latitude in degrees.
+        min_height : float
+            The minimum height in meters.
+        max_height : float
+            The maximum height in meters.
+
+        Returns
+        -------
+        region : BoundingVolumeRegion
+            A bounding volume region with the given values.
+        """
+
+        # Convert the degrees to radians
+        vals = cls.values_list_from_degrees(vals)
+        return cls(vals)
+
+    @staticmethod
+    def values_list_from_degrees(west,
+            south,
+            east,
+            north,
+            min_height=0,
+            max_height=0):
+        return np.deg2rad([west, south, east, north]).tolist() + \
+            [min_height, max_height]
+
+    @ classmethod
     def from_points(cls, points):
         """
         Compute the bounding volume region for a set of points. The x and y
@@ -373,7 +433,7 @@ class BoundingVolumeRegion(BoundingVolume):
 
         return cls(values)
 
-    @classmethod
+    @ classmethod
     def from_gdf(cls, gdf):
         """
         Create a bounding volume region from a GeoPandas GeoDataFrame. Only
@@ -528,7 +588,7 @@ class BoundingVolumeRegion(BoundingVolume):
             self.max_height
         ])
 
-    @staticmethod
+    @ staticmethod
     def __check_list_create_region(list_or_region):
         if isinstance(list_or_region, list):
             list_or_region = BoundingVolumeRegion(list_or_region)

@@ -83,7 +83,7 @@ class Cesium3DTileset:
         }
 
         # Create the content for this tile
-        bv = self.get_bounding_volume().to_json_dict()
+        bv = self.get_bounding_volume().to_json()
         
         tileset["root"]["content"] = {
             "boundingVolume": bv,
@@ -95,7 +95,7 @@ class Cesium3DTileset:
         tileset["root"]["geometricError"] = tile.max_width
 
         # Create the tileset.json Serializing json
-        json_object = json.dumps(tileset, indent=4)
+        json_object = json.dumps(tileset, indent=2)
 
         return json_object
 
@@ -236,7 +236,7 @@ class Cesium3DTileset:
 
         # Write the tileset.json
         with open(parent_json_path, "w") as f:
-            json.dump(tileset, f, indent=4)
+            json.dump(tileset, f, indent=2)
 
         if remove_children:
             # Remove the children
