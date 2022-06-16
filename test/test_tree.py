@@ -19,7 +19,7 @@ for root, dirs, files in os.walk(input_geopackage_dir):
             input_paths.append(os.path.join(root, file))
 
 # Make a B3DM and tileset JSON file for each of the geopackage files
-leaf_json_paths = []
+leaf_tiles = []
 for input_path in input_paths:
     # Get the tile from the geopackage
     gdf = gpd.read_file(input_path)
@@ -28,16 +28,16 @@ for input_path in input_paths:
         input_path.replace(input_geopackage_dir, output_directory))
     base_filename = os.path.basename(input_path).split('.')[0]
     # Get the tile from the geopackage
-    tileset, json_path = leaf_tile_from_gdf(
+    tile, tileset = leaf_tile_from_gdf(
         gdf,
         dir=output_dir,
         filename=base_filename
     )
-    leaf_json_paths.append(json_path)
+    leaf_tiles.append(tileset)
 
 # Make a parent tileset JSON file that points to each of the leaf tiles
 parent_tile_from_children_json(
-    child_paths=leaf_json_paths,
+    children=leaf_tiles,
     dir=os.path.join(output_directory, 'WorldCRS84Quad', '12', '762'),
     filename='455'
 )

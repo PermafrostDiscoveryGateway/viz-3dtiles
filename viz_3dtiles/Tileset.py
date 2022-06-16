@@ -99,7 +99,9 @@ class Base():
         Read a JSON file into a Base object.
         """
         with open(path) as f:
-            return cls.from_json(json.load(f))
+            tileset = cls.from_json(json.load(f))
+            tileset.file_path = path
+            return tileset
 
     def __str__(self):
         return self.to_dict().__str__()
@@ -116,6 +118,8 @@ class Base():
 
     def to_dict(self):
         d = self.__dict__.copy()
+        if 'file_path' in d:
+            del d['file_path']
         none_keys = []
         for key, value in d.items():
             # if the value has a to_dict method, call it
@@ -146,6 +150,7 @@ class Base():
 
         with open(path, 'w') as f:
             json.dump(self.to_dict(), f, separators=separators, indent=indent)
+            self.file_path = path
 
 
 class Asset(Base):
