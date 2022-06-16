@@ -7,11 +7,33 @@ import json
 class BoundingVolume(object):
 
     def __init__(self, values=None):
+        """
+        Initialize a BoundingVolumeBox or a BoundingVolumeRegion.
+
+        Parameters
+        ----------
+        values : list or dict
+            A list or dict of 6 or 12 numbers representing the bounding volume
+            as described in the Cesium3DTileset specification. A list of 6
+            numbers will create a BoundingVolumeRegion, while a list of 12
+            numbers will create a BoundingVolumeBox. Values may alternatively
+            be a dict a single item that has either the 'box' or 'region' key
+            mapped to the list of 6 or 12 numbers. Finally, values can also be
+            passed as a dict of west, south, east, north, min_height, and
+            max_height keys, with values in degrees (EPSG:4978) and meters.
+        """
         # Check that values is a list or array
         if not isinstance(values, (list, np.ndarray, dict)):
             raise ValueError(
                 'BoundingVolume values must be a list of 6 or 12 numbers, or a'
                 ' dict of west, east, south, and north degrees')
+        if isinstance(values, dict):
+            box_vals = values.get('box')
+            region_vals = values.get('region')
+            if box_vals is not None:
+                values = box_vals
+            elif region_vals is not None:
+                values = region_vals
         if self.is_degree_dict(values) or len(values) == 6:
             self.__class__ = BoundingVolumeRegion
             self.__init__(values)

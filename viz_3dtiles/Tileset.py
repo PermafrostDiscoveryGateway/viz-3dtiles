@@ -1,6 +1,7 @@
 import json
 from .BoundingVolume import BoundingVolume
 
+
 class Base():
     """
     A base class to extend to create other Cesium 3D Tile classes. This class
@@ -54,6 +55,14 @@ class Base():
             else:
                 raise ValueError(
                     f'{key} is not a valid key for class {cls_name}')
+
+    def copy(self):
+        """
+        Return a copy of the tileset.
+        """
+        json_str = json.dumps(self.to_dict())
+        json_data = json.loads(json_str)
+        return self.from_json(json_data)
 
     @staticmethod
     def parse_json(data=None):
@@ -120,7 +129,7 @@ class Base():
 
         return d
 
-    def to_file(self, path):
+    def to_file(self, path, minify=True):
         """
         Write this object to a JSON file.
 
@@ -129,8 +138,14 @@ class Base():
         path: str
             Path to a JSON file.
         """
+        separators = (',', ': ')
+        indent = 2
+        if minify:
+            separators = (',', ':')
+            indent = None
+
         with open(path, 'w') as f:
-            json.dump(self.to_dict(), f, indent=2)
+            json.dump(self.to_dict(), f, separators=separators, indent=indent)
 
 
 class Asset(Base):
@@ -224,7 +239,7 @@ class Content(Base):
         Initialize a Content object.
         """
         if boundingVolume:
-            if isinstance(boundingVolume, list):
+            if isinstance(boundingVolume, (list, dict)):
                 boundingVolume = BoundingVolume(boundingVolume)
             if not isinstance(boundingVolume, BoundingVolume):
                 raise ValueError(
@@ -445,7 +460,7 @@ class Tile(Base):
         new_bv = None
         if bv == 'update':
             new_bv = self.boundingVolume
-    
+
         if not isinstance(children, list):
             raise ValueError('children must be a list')
         for i in range(len(children)):
@@ -458,7 +473,8 @@ class Tile(Base):
             if bv is not None:
                 child_bv = child.boundingVolume
                 if child_bv:
-                    new_bv = child_bv if new_bv is None else new_bv.add(child_bv)
+                    new_bv = child_bv if new_bv is None else new_bv.add(
+                        child_bv)
 
         if self.children is None:
             self.children = []
@@ -483,6 +499,7 @@ class Tile(Base):
             raise ValueError('content must be a Content object')
 
         self.content = content
+
 
 class Tileset(Base):
     """
@@ -558,7 +575,7 @@ class Tileset(Base):
     def add_children(self, children, bv=None):
         """
         Add children to the root of the tileset.
-            
+
         Parameters
         ----------
         children : list of Tile or dict
@@ -578,7 +595,7 @@ class Tileset(Base):
     def add_content(self, content, bv=None):
         """
         Add content to the root of the tileset.
-            
+
         Parameters
         ----------
         content : Content or dict
