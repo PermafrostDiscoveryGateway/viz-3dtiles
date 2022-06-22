@@ -1,7 +1,7 @@
 import os
 from .BoundingVolume import BoundingVolume
 from .Cesium3DTile import Cesium3DTile
-from .Tileset import Tileset, Asset, Content
+from .Cesium3DTileset import Tileset, Asset, Content
 
 
 def leaf_tile_from_gdf(
@@ -85,16 +85,16 @@ def leaf_tile_from_gdf(
     return tile, tileset
 
 
-def combine_leaf_tiles(
-    tile_list,
-    dir='',
-    filename='tileset',
-    geometricError=None,
-    tilesetVersion=None,
-    boundingVolume=None,
-    minify_json=True
-):
-    pass
+# def combine_leaf_tiles(
+#     tile_list,
+#     dir='',
+#     filename='tileset',
+#     geometricError=None,
+#     tilesetVersion=None,
+#     boundingVolume=None,
+#     minify_json=True
+# ):
+#     pass
 
 
 def parent_tile_from_children_json(
