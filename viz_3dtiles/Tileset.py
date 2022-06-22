@@ -440,30 +440,41 @@ class Tile(Base):
         data = super().to_dict()
         if self.children:
             data['children'] = [child.to_dict() for child in self.children]
+        # If the refine value is default, remove it
         if data['refine'] and data['refine'] == self.refine_opts[0]:
             del data['refine']
         return data
 
-    def add_children(self, children, bv=None):
+    def add_children(self, children, bv_method=None, bv_source='content'):
         """
-        Add children to the tile.
+        Add children to the tile and optionally update the tile's root bounding
+        volume. The content bounding volume is not updated.
 
         Parameters
         ----------
         children : list of Tile or dict
             An array of objects that define child tiles.
-        bv : None or "update" or "replace"
-            How to update the tile's bounding volume as children are added.
-            If None, the bounding volume is not changed. If "update", the
-            children bounding volumes are added to the tile's bounding volume.
-            If "replace", the children's combined bounding volumes replace the
-            tile's current bounding volume. Note that bounding volumes must all
-            be of the same type to be added (i.e., all must be either 'box' or
-            'region').
+        bv_method : None or "update" or "replace"
+            How to update the current tile's root bounding volume as children
+            are added. If None (default), the bounding volume is not changed.
+            If "update", the children bounding volumes are added to the tile's
+            bounding volume. If "replace", the children's combined bounding
+            volumes replace the tile's current bounding volume. Note that
+            bounding volumes must all be of the same type to be added (i.e.,
+            all must be either 'box' or 'region').
+        bv_source: "root" or "content"
+            When updating the current tile's root bounding volume (when
+            bv_method is set to "update" or "replace"), should this method add
+            the children's *root* bounding volumes, or the children's *content*
+            bounding volumes (if they exist)? If set to "content" (default),
+            then the method will first search for a child's content bounding
+            volume, and will add it to the tile's root bounding volume if they
+            exist. If a child has no content bounding volume, then the root
+            bounding volume will be added instead.
         """
 
         new_bv = None
-        if bv == 'update':
+        if bv_method == 'update':
             new_bv = self.boundingVolume
 
         if not isinstance(children, list):
@@ -475,11 +486,18 @@ class Tile(Base):
                 child = children[i]
             if not isinstance(child, Tile):
                 raise ValueError('children must be a list of Tile objects')
-            if bv is not None:
-                child_bv = child.boundingVolume
+            if bv_method is not None:
+                child_content = child.content
+                child_bv = None
+                if child_content:
+                    child_bv = child_content.boundingVolume
+                if bv_source is "root" or child_bv is None:
+                    child_bv = child.boundingVolume
                 if child_bv:
-                    new_bv = child_bv if new_bv is None else new_bv.add(
-                        child_bv)
+                    if new_bv is None:
+                        new_bv = child_bv
+                    else:
+                        new_bv = new_bv.add(child_bv)
 
         if self.children is None:
             self.children = []
@@ -577,7 +595,7 @@ class Tileset(Base):
         self.extensionsUsed = extensionsUsed
         self.extensionsRequired = extensionsRequired
 
-    def add_children(self, children, bv=None):
+    def add_children(self, children, bv_method=None, bv_source="content"):
         """
         Add children to the root of the tileset.
 
@@ -585,7 +603,7 @@ class Tileset(Base):
         ----------
         children : list of Tile or dict
             An array of objects that define child tiles.
-        bv : None or "update" or "replace"
+        bv_method : None or "update" or "replace"
             How to update the tileset's bounding volume as children are added.
             If None, the bounding volume is not changed. If "update", the
             children bounding volumes are added to the tileset's bounding volume.
@@ -593,9 +611,17 @@ class Tileset(Base):
             tileset's current bounding volume. Note that bounding volumes must all
             be of the same type to be added (i.e., all must be either 'box' or
             'region').
+        bv_source: "root" or "content"
+            When updating the current tile's root bounding volume, should this
+            method add the children's root bounding volumes, or the children's
+            content bounding volumes (if they exist)? If set to "content"
+            (default), then the method will first search for content bounding
+            volumes in the children, and will add those to the tile's root
+            bounding volume. If a child has no content bounding volume, then
+            the root bounding volume will be added instead.
         """
         # The root is a Tile object
-        self.root.add_children(children, bv)
+        self.root.add_children(children, bv_method, bv_source)
 
     def add_content(self, content, bv=None):
         """

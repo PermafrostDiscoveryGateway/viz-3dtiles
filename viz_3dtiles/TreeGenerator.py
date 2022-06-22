@@ -104,6 +104,7 @@ def parent_tile_from_children_json(
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
+    boundingVolumeSource="content",
     minify_json=True
 ):
     """
@@ -138,9 +139,16 @@ def parent_tile_from_children_json(
         the tilesetVersion from the first child tile will be used.
     boundingVolume : list or dict
         A root bounding volume for the tile. If None (default), the bounding
-        volume will be the calculated oriented bounding box (OBB) of the
-        GeoDataFrame. The OBB will be used for the content bounding volume in
-        either case.
+        volume will be the calculated as the union of the child bounding
+        volumes.
+    boundingVolumeSource : "root" or "content"
+        When a boundingVolume is not set, then which of each child's bounding
+        volumes should be used to calculate the parent tile's bounding volume.
+        This method is passed to bv_source parameter in the Tile.add_children
+        method. If set to "content" (default), then the method will first
+        search for a child's content bounding volume, and will add it to the
+        tile's root bounding volume if they exist. If a child has no content
+        bounding volume, then the root bounding volume will be added instead.
     minify_json : bool
         Whether to minify the JSON file. Default is True.
 
@@ -177,6 +185,7 @@ def parent_tile_from_children_json(
     child_geo_errors = []
     child_tilesets = []
     child_root_tiles = []
+    rel_child_paths = []
 
     for i in range(len(child_paths)):
         # Read in the relevant parts of the child data
@@ -185,14 +194,12 @@ def parent_tile_from_children_json(
         child_root = child_tileset.root
         rel_path_to_child = os.path.relpath(cp, dir)
         geometric_error = child_tileset.geometricError
-        # update the content to only contain the URI for the child json,
-        # relative to the new parent json
-        child_root.content = Content(uri=rel_path_to_child)
         child_root.children = None
         # Append child data parts to lists
         child_geo_errors.append(geometric_error)
         child_tilesets.append(child_tileset)
         child_root_tiles.append(child_root)
+        rel_child_paths.append(rel_path_to_child)
 
     # Use the first child's tileset info to create the parent tileset
     new_tileset = child_tilesets[0].copy()
@@ -201,7 +208,15 @@ def parent_tile_from_children_json(
 
     # Add the children to the parent tileset
     bv_method = 'replace' if boundingVolume is None else None
-    new_tileset.add_children(child_root_tiles, bv_method)
+    bv_source = boundingVolumeSource
+    new_tileset.add_children(child_root_tiles, bv_method, bv_source)
+
+    # All bv info from children is now in parent. Update the children content
+    # to only contain the URI for the child json, relative to the new parent
+    # json
+    for i in range(len(child_root_tiles)):
+        child = new_tileset.root.children[i]
+        child.content = Content(uri=rel_child_paths[i])
 
     # Update other parameters to the parent tileset
     if boundingVolume:
