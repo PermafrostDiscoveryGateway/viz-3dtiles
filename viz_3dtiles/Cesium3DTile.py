@@ -245,7 +245,7 @@ class Cesium3DTile:
         t = B3dm.from_glTF(self.gltf, bt=self.create_batch_table())
 
         # to save our tile as a .b3dm file
-        t.save_as(self.save_to+ self.get_filename())
+        t.save_as(os.path.join(self.save_to, self.get_filename()))
 
     def get_filename(self):
         return self.save_as + self.FILE_EXT

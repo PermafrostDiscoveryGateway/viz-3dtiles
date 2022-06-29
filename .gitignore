@@ -140,3 +140,8 @@ dmypy.json
 
 # MacOS
 .DS_Store
+
+# testing / NPM
+test/run-cesium/node_modules/*
+test/run-cesium/package.json
+test/run-cesium/package-lock.json
