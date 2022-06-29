@@ -8,6 +8,8 @@ def leaf_tile_from_gdf(
     gdf,
     dir='',
     filename='tileset',
+    crs=None,
+    z=0,
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
@@ -28,6 +30,12 @@ def leaf_tile_from_gdf(
         The base filename for the tile, excluding base directory and extension.
         The JSON and B3DM files will be saved as <filename>.json and
         <filename>.b3dm. Default is 'tileset'.
+    crs : str
+        The coordinate reference system of the GeoDataFrame, if the GeoDataFrame
+        does not have a CRS set.
+    z : int
+        If the GeoDataFrame does not have a Z coordinate, then the Z coordinate
+        will be set to this value. Default is 0.
     geometricError : float
         The geometric error of the tile. If None (default), the geometric error
         will be the max_width calculated when creating the Cesium3DTile (B3DM).
@@ -49,7 +57,7 @@ def leaf_tile_from_gdf(
     tile = Cesium3DTile()
     tile.save_to = dir
     tile.save_as = filename
-    tile.from_geodataframe(gdf)
+    tile.from_geodataframe(gdf, crs=crs, z=z)
     gdf = tile.geodataframe
     tile_bounding_volume = BoundingVolume.from_gdf(gdf)
     tile.get_filename()

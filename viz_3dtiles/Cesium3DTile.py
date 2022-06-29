@@ -75,7 +75,7 @@ class Cesium3DTile:
             "filter_by_attributes": self.filter_by_attributes,
         }
 
-    def from_file(self, filepath, crs="EPSG:3413"):
+    def from_file(self, filepath, crs=None, z=0):
         """
         Parameters
         ----------
@@ -83,8 +83,14 @@ class Cesium3DTile:
             The path to the file to convert
         """
         gdf : GeoDataFrame = geopandas.read_file(filepath)
+        self.from_geodataframe(gdf, crs, z)
+
+    def from_geodataframe(self, gdf, crs=None, z=0):
 
         if gdf.crs == None:
+            if crs == None:
+                raise Exception("The vector file must have a CRS defined,"
+                                " or a crs parameter must be provided.")
             gdf = gdf.set_crs(crs)
 
         self.geodataframe = gdf
@@ -93,28 +99,13 @@ class Cesium3DTile:
         self.filter_polygons()
 
         if gdf.has_z.all() == False:
-            self.add_z()
+            self.add_z(z)
 
         self.to_epsg()
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
-        return
 
-    
-    def from_geodataframe(self, gdf):
-        self.geodataframe = gdf
-
-        #Filter out polygons as needed
-        self.filter_polygons()
-
-        if gdf.has_z.all() == False:
-            self.add_z()
-
-        self.to_epsg()
-        self.tesselate()
-        self.create_gltf()
-        self.create_b3dm()
     
     def filter_polygons(self):
         #Filter out polygons beyond the maximum
@@ -128,7 +119,7 @@ class Cesium3DTile:
             except:
                 print("Not filtering out polygons for attribute " + key);
 
-    def add_z(self, z=5.2):
+    def add_z(self, z=0):
         """
             Add a z-coordinate to the (2D) geodataframe.
 
