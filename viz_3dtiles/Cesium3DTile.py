@@ -150,8 +150,8 @@ class Cesium3DTile:
             # use the TriangleSoup helper class to transform the wkb into arrays of points and normals
             # print(f"Tesselating polygon to generate position and normal arrays")
             ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
-            positions = ts.getPositionArray()
-            normals = ts.getNormalArray()
+            positions = ts.get_position_array()
+            normals = ts.get_normal_array()
 
             # Calculate the bounding box 
             # First get the z values since shapely bounds function does not support 3D geom/z values)
@@ -219,7 +219,7 @@ class Cesium3DTile:
             values=[]
             for v in self.geodataframe[attr].values:
                 values.append(str(v))
-            bt.header.add_property_from_array(propertyName=attr, array=values)
+            bt.header.add_property_from_array(property_name=attr, array=values)
 
         self.batch_table = bt
 
