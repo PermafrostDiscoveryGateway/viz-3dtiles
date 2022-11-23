@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 from shapely.geometry import Polygon
+from shapely import get_coordinates
 import json
 
 
@@ -66,6 +67,18 @@ class BoundingVolume(object):
             return BoundingVolumeBox.from_gdf(gdf)
         elif type == 'region':
             return BoundingVolumeRegion.from_gdf(gdf)
+
+    @ classmethod
+    def from_z_polygons(cls, polys, type='box'):
+        """
+        Create a BoundingVolumeBox or BoundingVolumeRegion given
+        a list of Z POLYGONS
+        """
+        points = get_coordinates(polys, include_z=True)
+        if type == 'box':
+            return BoundingVolumeBox.from_points(points)
+        elif type == 'region':
+            return BoundingVolumeRegion.from_points(points)
 
     @ classmethod
     def from_json(cls, json_data):
@@ -184,6 +197,8 @@ class BoundingVolumeBox(BoundingVolume):
         polygon geometries are supported so far (i.e. the GeoDataFrame geometry
         column must be ONLY polygons).
         """
+
+        print('Warning: This method no longer works for Shapely version 2.0b2')
 
         # Check that the geometry contains polygons only
         num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')

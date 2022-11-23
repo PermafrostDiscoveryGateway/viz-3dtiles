@@ -2,10 +2,13 @@
 import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon
+from shapely.ops import transform
+from shapely import get_coordinates
 from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
 import numpy as np
 import os
 import uuid
+import pyproj
 
 class Cesium3DTile:
     CESIUM_EPSG = 4978
@@ -13,6 +16,7 @@ class Cesium3DTile:
 
     def __init__(self):
         self.geodataframe = GeoDataFrame()
+        self.z = 0
         self.save_as = "model"
         self.save_to = os.path.dirname(os.path.abspath(__file__))+r"../" # base dir of repo
         self.max_features = 99999999999
@@ -87,6 +91,9 @@ class Cesium3DTile:
 
     def from_geodataframe(self, gdf, crs=None, z=0):
 
+        # Set the default z-level that we will set on 2D polygons
+        self.z = z
+
         if gdf.crs == None:
             if crs == None:
                 raise Exception("The vector file must have a CRS defined,"
@@ -98,15 +105,23 @@ class Cesium3DTile:
         #Filter out polygons as needed
         self.filter_polygons()
 
-        if gdf.has_z.all() == False:
-            self.add_z(z)
+        # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
+        self.transformer = pyproj.Transformer.from_proj(
+            gdf.crs, # source CRS
+            pyproj.Proj(self.CESIUM_EPSG) # destination CRS
+        )
 
-        self.to_epsg()
+        self.transformed_geometries = gdf.geometry.apply(self.polygon_transformer)
+
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
 
-    
+    def polygon_transformer(self, polygon):
+        if not polygon.has_z:
+            polygon = Polygon([(x, y, 0) for x,y in polygon.exterior.coords])
+        return transform(self.transformer.transform, polygon)
+
     def filter_polygons(self):
         #Filter out polygons beyond the maximum
         if self.max_features is not None:
@@ -119,47 +134,30 @@ class Cesium3DTile:
             except:
                 print("Not filtering out polygons for attribute " + key);
 
-    def add_z(self, z=0):
-        """
-            Add a z-coordinate to the (2D) geodataframe.
-
-            Parameters
-            ----------
-            z : float
-                The z-coordinate to add to the geodataframe (height in meters).
-        """
-        self.geodataframe['geometry'] = self.geodataframe['geometry'].apply(
-            lambda poly: Polygon([(x, y, z) for x, y in poly.exterior.coords]))
-
-    def to_epsg(self, epsg=CESIUM_EPSG):
-        self.geodataframe = self.geodataframe.to_crs(epsg=epsg)
-
     def tesselate(self):
         min_tileset_z=9e99
         max_tileset_z=-9e99
         max_width=-9e99
-        row = 0
-        for feature in self.geodataframe.iterfeatures():
 
-            # print(f"Processing {row + 1} of {len(self.geodataframe)} in EPSG", self.CESIUM_EPSG)
+        for geom in self.transformed_geometries:
 
             # Create a multipolygon for only this polygon feature
-            polygon=Polygon(feature["geometry"]["coordinates"][0])
-            multipolygon = MultiPolygon([polygon])
+            multipolygon = MultiPolygon([geom])
 
-            # use the TriangleSoup helper class to transform the wkb into arrays of points and normals
-            # print(f"Tesselating polygon to generate position and normal arrays")
+            # use the TriangleSoup helper class to transform the wkb into
+            # arrays of points and normals
             ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
             positions = ts.get_position_array()
             normals = ts.get_normal_array()
 
-            # Calculate the bounding box 
-            # First get the z values since shapely bounds function does not support 3D geom/z values)
-            z = [z for (x,y,z) in feature["geometry"]["coordinates"][0]]
-            minz=min(z)
-            maxz=max(z)
-            box_degrees = [ [multipolygon.bounds[2], multipolygon.bounds[3], maxz],
-                            [multipolygon.bounds[0], multipolygon.bounds[1], minz] ]
+            # Calculate the bounding box First get the z values since shapely
+            # bounds function does not support 3D geom/z values)
+            zs = [z for (x,y,z) in get_coordinates(geom, include_z=True)]
+            minz=min(zs)
+            maxz=max(zs)
+            bounds = multipolygon.bounds
+            box_degrees = [ [bounds[2], bounds[3], maxz],
+                            [bounds[0], bounds[1], minz] ]
 
             # Cache the min and max z values for fast retrieval later
             if minz < min_tileset_z:
@@ -167,8 +165,8 @@ class Cesium3DTile:
             if maxz > max_tileset_z:
                 max_tileset_z=maxz
             
-            if polygon.length > max_width:
-                max_width = polygon.length
+            if geom.length > max_width:
+                max_width = geom.length
 
             # generate the glTF part from the binary arrays.
             self.geometries.append({ 'position': positions, 'normal': normals, 'bbox': box_degrees})
@@ -177,7 +175,6 @@ class Cesium3DTile:
             self.max_tileset_z = max_tileset_z
             self.min_tileset_z = min_tileset_z
 
-            row += 1
 
     def create_gltf(self):
 
