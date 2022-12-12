@@ -671,7 +671,7 @@ class Tileset(Base):
 
         for t in tiles:
             ge =+ t.max_width
-            tile_bv = BoundingVolume.from_z_polygons(t.transformed_geometries)
+            tile_bv = BoundingVolume.from_gdf(t.geodataframe)
             uri = os.path.join(t.save_to, t.get_filename())
             uri = os.path.relpath(uri, os.path.dirname(file_path))
             tile_obj = Tile(

@@ -198,8 +198,6 @@ class BoundingVolumeBox(BoundingVolume):
         column must be ONLY polygons).
         """
 
-        print('Warning: This method no longer works for Shapely version 2.0b2')
-
         # Check that the geometry contains polygons only
         num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')
         if num_non_polys > 0:
