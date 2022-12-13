@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 import geopandas
 from geopandas.geodataframe import GeoDataFrame
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import transform
 from shapely import get_coordinates
+from shapely.geometry import Polygon, MultiPolygon
 from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
 import numpy as np
 import os
 import uuid
-import pyproj
 
 class Cesium3DTile:
     CESIUM_EPSG = 4978
@@ -105,22 +103,13 @@ class Cesium3DTile:
         #Filter out polygons as needed
         self.filter_polygons()
 
-        # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
-        self.transformer = pyproj.Transformer.from_proj(
-            gdf.crs, # source CRS
-            pyproj.Proj(self.CESIUM_EPSG) # destination CRS
-        )
+        if gdf.has_z.all() == False:
+            self.add_z()
 
-        self.transformed_geometries = gdf.geometry.apply(self.polygon_transformer)
-
+        self.to_epsg()
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
-
-    def polygon_transformer(self, polygon):
-        if not polygon.has_z:
-            polygon = Polygon([(x, y, 0) for x,y in polygon.exterior.coords])
-        return transform(self.transformer.transform, polygon)
 
     def filter_polygons(self):
         #Filter out polygons beyond the maximum
@@ -134,12 +123,27 @@ class Cesium3DTile:
             except:
                 print("Not filtering out polygons for attribute " + key);
 
+    def add_z(self):
+        """
+            Add a z-coordinate to the (2D) geodataframe.
+            Parameters
+            ----------
+            z : float
+                The z-coordinate to add to the geodataframe (height in meters).
+        """
+        z = self.z or 0
+        self.geodataframe['geometry'] = self.geodataframe['geometry'].apply(
+            lambda poly: Polygon([(x, y, z) for x, y in poly.exterior.coords]))
+
+    def to_epsg(self, epsg=CESIUM_EPSG):
+        self.geodataframe = self.geodataframe.to_crs(epsg=epsg)
+
     def tesselate(self):
         min_tileset_z=9e99
         max_tileset_z=-9e99
         max_width=-9e99
 
-        for geom in self.transformed_geometries:
+        for geom in self.geodataframe.geometry:
 
             # Create a multipolygon for only this polygon feature
             multipolygon = MultiPolygon([geom])

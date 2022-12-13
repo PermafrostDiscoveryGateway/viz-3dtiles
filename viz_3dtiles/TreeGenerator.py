@@ -59,7 +59,7 @@ def leaf_tile_from_gdf(
     tile.save_as = filename
     tile.from_geodataframe(gdf, crs=crs, z=z)
     gdf = tile.geodataframe
-    tile_bounding_volume = BoundingVolume.from_z_polygons(tile.transformed_geometries)
+    tile_bounding_volume = BoundingVolume.from_gdf(gdf)
     tile.get_filename()
 
     # Only set the optional content bounding volume if it differs from the root
