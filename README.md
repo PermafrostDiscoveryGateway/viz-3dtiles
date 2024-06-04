@@ -28,6 +28,20 @@ source .3dtilesenv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Other pre-requesites
+
+`libgomp` and `libgl` are required on your system.
+
+```bash
+sudo apt install libgomp1 libgl1
+# OR
+conda install libgomp
+```
+
+> ![NOTE]
+> `libgomp` can be expressed in `environment.yml`. Do that then combine this section
+> with the pip install section?
+
 ## Usage
 
 ```python
