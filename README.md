@@ -9,7 +9,7 @@ This package was developed for the [Permafrost Discovery Gateway](https://permaf
 ### Conda
 
 ```bash
-conda env create -n viz_3d --file environment.yml
+conda env create
 conda activate viz_3d
 ```
 
