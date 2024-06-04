@@ -64,7 +64,7 @@ class Cesium3DTile:
 
     def get_all_properties(self):
         """
-        Get all proerties of the Cesium3DTile class as a dictionary.
+        Get all properties of the Cesium3DTile class as a dictionary.
         """
         return {
             "z": self.z,
