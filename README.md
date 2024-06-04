@@ -48,10 +48,10 @@ conda install libgomp
 from viz_3dtiles import Cesium3DTile, Cesium3DTileset
 
 # 1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to
-#    process a `.shp` file into a `.b3dm` 3D model:
+#    process a `.gpkg` file into a `.b3dm` 3D model:
 tile = Cesium3DTile()
 tile.save_to="~/my-tilesets/lakes/"
-tile.from_file(filepath="~/my-data/lakes.shp")
+tile.from_file(filepath="~/my-data/lakes.gpkg")
 
 # 2. Create an instance of the `Cesium3DTileset` class to contain that tile:
 
