@@ -30,21 +30,22 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to process a `.shp` file into a `.b3dm` 3D model:
-
 ```python
+from viz_3dtiles import Cesium3DTile, Cesium3DTileset
+
+# 1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to
+#    process a `.shp` file into a `.b3dm` 3D model:
 tile = Cesium3DTile()
 tile.save_to="~/my-tilesets/lakes/"
 tile.from_file(filepath="~/my-data/lakes.shp")
-```
 
-2. Create an instance of the `Cesium3DTileset` class to contain that tile:
+# 2. Create an instance of the `Cesium3DTileset` class to contain that tile:
 
-```python
 tileset = Cesium3DTileset(tiles=[tile])
 tileset.save_to="~/my-tilesets/lakes/"
 tileset.write_file()
 ```
+
 
 ## Demo
 
