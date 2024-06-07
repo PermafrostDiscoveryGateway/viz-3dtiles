@@ -9,7 +9,7 @@ This package was developed for the [Permafrost Discovery Gateway](https://permaf
 ### Conda
 
 ```bash
-conda env create -n viz_3d --file environment.yml
+conda env create
 conda activate viz_3d
 ```
 
@@ -28,23 +28,38 @@ source .3dtilesenv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Usage
+### Other pre-requesites
 
-1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to process a `.shp` file into a `.b3dm` 3D model:
+`libgomp` and `libgl` are required on your system.
 
-```python
-tile = Cesium3DTile()
-tile.save_to="~/my-tilesets/lakes/"
-tile.from_file(filepath="~/my-data/lakes.shp")
+```bash
+sudo apt install libgomp1 libgl1
+# OR
+conda install libgomp
 ```
 
-2. Create an instance of the `Cesium3DTileset` class to contain that tile:
+> ![NOTE]
+> `libgomp` can be expressed in `environment.yml`. Do that then combine this section
+> with the pip install section?
+
+## Usage
 
 ```python
+from viz_3dtiles import Cesium3DTile, Cesium3DTileset
+
+# 1. Create an instance of the `Cesium3DTile` class. Use `Cesium3DTile.from_file()` to
+#    process a `.gpkg` file into a `.b3dm` 3D model:
+tile = Cesium3DTile()
+tile.save_to="~/my-tilesets/lakes/"
+tile.from_file(filepath="~/my-data/lakes.gpkg")
+
+# 2. Create an instance of the `Cesium3DTileset` class to contain that tile:
+
 tileset = Cesium3DTileset(tiles=[tile])
 tileset.save_to="~/my-tilesets/lakes/"
 tileset.write_file()
 ```
+
 
 ## Demo
 

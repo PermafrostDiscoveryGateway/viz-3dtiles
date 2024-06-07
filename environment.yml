@@ -1,5 +1,5 @@
-# usage: conda env create -n viz_3d --file environment.yml
-# name: viz_3d
+# usage: conda env create
+name: viz_3d
 channels:
   - conda-forge
 dependencies:
