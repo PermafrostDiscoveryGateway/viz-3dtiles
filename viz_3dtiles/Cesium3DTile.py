@@ -3,7 +3,11 @@ import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely import get_coordinates
 from shapely.geometry import Polygon, MultiPolygon
-from py3dtiles import GlTF, TriangleSoup, B3dm, BatchTable
+from shapely.ops import transform
+from shapely import get_coordinates
+from py3dtiles.tileset.content import GlTF, B3dm
+from py3dtiles.tileset.batch_table import BatchTable
+from py3dtiles.tilers.b3dm.wkb_utils import TriangleSoup
 import numpy as np
 import os
 import uuid
