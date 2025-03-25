@@ -108,7 +108,7 @@ def leaf_tile_from_gdf(
 def parent_tile_from_children_json(
     children,
     dir='',
-    filename='tileset',
+    filename='p_tileset',
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
