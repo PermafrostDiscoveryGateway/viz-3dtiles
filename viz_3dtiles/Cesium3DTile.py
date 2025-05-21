@@ -110,7 +110,8 @@ class Cesium3DTile:
         # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
         self.transformer = pyproj.Transformer.from_proj(
             gdf.crs, # source CRS
-            pyproj.Proj(self.CESIUM_EPSG) # destination CRS
+            pyproj.Proj(self.CESIUM_EPSG), # destination CRS
+            always_xy=True
         )
 
         self.transformed_geometries = gdf.geometry.apply(self.polygon_transformer)
