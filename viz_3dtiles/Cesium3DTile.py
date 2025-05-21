@@ -108,7 +108,7 @@ class Cesium3DTile:
         self.filter_polygons()
 
         # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
-        self.transformer = pyproj.Transformer.from_proj(
+        self.transformer = pyproj.Transformer.from_crs(
             gdf.crs, # source CRS
             pyproj.Proj(self.CESIUM_EPSG), # destination CRS
             always_xy=True
