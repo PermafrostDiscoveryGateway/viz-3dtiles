@@ -15,6 +15,6 @@ setup(name='viz_3dtiles',
         'shapely >= 2.0b2',
         'geopandas >= 0.12, < 1.0',
         'pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git#egg=pdgpy3dtiles',
-        'open3d >= 0.15, < 1.0'
+        'open3d < 0.19.0',
       ],
       zip_safe=False)
