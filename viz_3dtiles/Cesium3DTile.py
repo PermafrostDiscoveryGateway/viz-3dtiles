@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import geopandas
 from geopandas.geodataframe import GeoDataFrame
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import transform
+from shapely.geometry import Polygon, MultiPolygon, LinearRing
 from shapely import get_coordinates
 from py3dtiles.tileset.content import GlTF, B3dm
 from py3dtiles.tileset.batch_table import BatchTable
@@ -10,7 +9,6 @@ from py3dtiles.tilers.b3dm.wkb_utils import TriangleSoup
 import numpy as np
 import os
 import uuid
-import pyproj
 
 
 class Cesium3DTile:
@@ -84,15 +82,28 @@ class Cesium3DTile:
             "filter_by_attributes": self.filter_by_attributes,
         }
 
-    def from_file(self, filepath, crs=None, z=0):
+    def from_file(self, filepath, crs=None, z=0, drop_staging=False):
         """
         Parameters
         ----------
         filepath : string
             The path to the file to convert
         """
-        gdf: GeoDataFrame = geopandas.read_file(filepath)
-        self.from_geodataframe(gdf, crs, z)
+        print("Filepath: " + filepath)
+        try:
+            gdf: GeoDataFrame = geopandas.read_file(filepath)
+
+            print("Before:", gdf.columns.tolist())
+
+            if drop_staging:
+                gdf = gdf.drop(columns=gdf.filter(like="staging_").columns)
+
+            print("After:", gdf.columns.tolist())
+
+            self.from_geodataframe(gdf, crs, z)
+        except Exception as e:
+            print("Error reading file: " + str(e))
+            print("Filepath: " + filepath)
 
     def from_geodataframe(self, gdf, crs=None, z=0):
 
@@ -109,24 +120,54 @@ class Cesium3DTile:
 
         self.geodataframe = gdf
 
+        # Remove rows with inf or nan values
+        self.remove_inf_nan()
+
         # Filter out polygons as needed
         self.filter_polygons()
 
-        # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
-        self.transformer = pyproj.Transformer.from_proj(
-            gdf.crs, pyproj.Proj(self.CESIUM_EPSG)  # source CRS  # destination CRS
-        )
+        gdf["geometry"] = gdf["geometry"].apply(self.to_multipolygon)
 
-        self.transformed_geometries = gdf.geometry.apply(self.polygon_transformer)
+        # Re-project polygons to the Cesium CRS for tesselation.
+        gdf = gdf.to_crs(epsg=self.CESIUM_EPSG)
+
+        self.transformed_geometries = gdf.geometry
 
         self.tesselate()
         self.create_gltf()
         self.create_b3dm()
 
-    def polygon_transformer(self, polygon):
-        if not polygon.has_z:
-            polygon = Polygon([(x, y, 0) for x, y in polygon.exterior.coords])
-        return transform(self.transformer.transform, polygon)
+    # Ensure all geometries are MultiPolygon and 3D
+    def make_3d(self, geom):
+        """Adds a Z-coordinate to a geometry."""
+        if geom.has_z:
+            exterior = [(x, y, z + self.z) for x, y, z in geom.exterior.coords]
+            interior = [
+                LinearRing([(x, y, z + self.z) for x, y, z in ring.coords])
+                for ring in geom.interiors
+            ]
+        else:
+            exterior = [(x, y, self.z) for x, y in geom.exterior.coords]
+            interior = [
+                LinearRing([(x, y, self.z) for x, y in ring.coords])
+                for ring in geom.interiors
+            ]
+        return Polygon(exterior, interior)
+
+    def to_multipolygon(self, geom):
+        """Converts a Polygon to a MultiPolygon."""
+        if isinstance(geom, Polygon):
+            return MultiPolygon([self.make_3d(geom)])
+        elif isinstance(geom, MultiPolygon):
+            return MultiPolygon([self.make_3d(poly) for poly in geom.geoms])
+        else:
+            raise ValueError("Geometry must be a Polygon or MultiPolygon")
+
+    def remove_inf_nan(self):
+        """Remove rows with inf or nan values from the geodataframe."""
+        self.geodataframe = self.geodataframe.replace(
+            [np.inf, -np.inf], np.nan
+        ).dropna()
 
     def filter_polygons(self):
         # Filter out polygons beyond the maximum
@@ -147,8 +188,7 @@ class Cesium3DTile:
 
         for geom in self.transformed_geometries:
 
-            # Create a multipolygon for only this polygon feature
-            multipolygon = MultiPolygon([geom])
+            multipolygon = geom
 
             # use the TriangleSoup helper class to transform the wkb into
             # arrays of points and normals
