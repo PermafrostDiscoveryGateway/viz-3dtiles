@@ -9,6 +9,13 @@ from py3dtiles.tilers.b3dm.wkb_utils import TriangleSoup
 import numpy as np
 import os
 import uuid
+import logging
+
+# Initialize logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 class Cesium3DTile:
@@ -89,21 +96,24 @@ class Cesium3DTile:
         filepath : string
             The path to the file to convert
         """
-        print("Filepath: " + filepath)
+        logger.info(f"Processing file: {filepath}")
         try:
             gdf: GeoDataFrame = geopandas.read_file(filepath)
 
-            print("Before:", gdf.columns.tolist())
+            logger.debug(f"Columns before processing: {gdf.columns.tolist()}")
 
             if drop_staging:
-                gdf = gdf.drop(columns=gdf.filter(like="staging_").columns)
+                staging_columns = gdf.filter(like="staging_").columns
+                if len(staging_columns) > 0:
+                    logger.info(f"Dropping staging columns: {staging_columns.tolist()}")
+                    gdf = gdf.drop(columns=staging_columns)
 
-            print("After:", gdf.columns.tolist())
+            logger.debug(f"Columns after processing: {gdf.columns.tolist()}")
 
             self.from_geodataframe(gdf, crs, z)
         except Exception as e:
-            print("Error reading file: " + str(e))
-            print("Filepath: " + filepath)
+            logger.error(f"Error reading file {filepath}: {str(e)}")
+            raise
 
     def from_geodataframe(self, gdf, crs=None, z=0):
 
@@ -129,6 +139,7 @@ class Cesium3DTile:
         gdf["geometry"] = gdf["geometry"].apply(self.to_multipolygon)
 
         # Re-project polygons to the Cesium CRS for tesselation.
+        logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
         gdf = gdf.to_crs(epsg=self.CESIUM_EPSG)
 
         self.transformed_geometries = gdf.geometry
@@ -165,28 +176,49 @@ class Cesium3DTile:
 
     def remove_inf_nan(self):
         """Remove rows with inf or nan values from the geodataframe."""
+        original_count = len(self.geodataframe)
         self.geodataframe = self.geodataframe.replace(
             [np.inf, -np.inf], np.nan
         ).dropna()
+        removed_count = original_count - len(self.geodataframe)
+        if removed_count > 0:
+            logger.info(f"Removed {removed_count} rows with inf/nan values")
 
     def filter_polygons(self):
         # Filter out polygons beyond the maximum
         if self.max_features is not None:
+            original_count = len(self.geodataframe)
             self.geodataframe = self.geodataframe[0 : self.max_features]
+            if len(self.geodataframe) < original_count:
+                logger.info(
+                    f"Limited features to {self.max_features} (was {original_count})"
+                )
 
         # Filter polygons with a certain attribute
         for key, value in self.filter_by_attributes.items():
             try:
+                original_count = len(self.geodataframe)
                 self.geodataframe = self.geodataframe[self.geodataframe[key] == value]
-            except:
-                print("Not filtering out polygons for attribute " + key)
+                filtered_count = len(self.geodataframe)
+                logger.info(
+                    f"Filtered by {key}={value}: {original_count} -> {filtered_count} features"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Could not filter polygons by attribute '{key}': {str(e)}"
+                )
 
     def tesselate(self):
+        logger.info("Starting tessellation process")
         min_tileset_z = 9e99
         max_tileset_z = -9e99
         max_width = -9e99
 
-        for geom in self.transformed_geometries:
+        for i, geom in enumerate(self.transformed_geometries):
+            if i % 100 == 0:  # Log progress every 100 geometries
+                logger.debug(
+                    f"Processing geometry {i+1}/{len(self.transformed_geometries)}"
+                )
 
             multipolygon = geom
 
@@ -222,7 +254,13 @@ class Cesium3DTile:
             self.max_tileset_z = max_tileset_z
             self.min_tileset_z = min_tileset_z
 
+        logger.info(
+            f"Tessellation complete. Processed {len(self.geometries)} geometries"
+        )
+        logger.debug(f"Z range: {min_tileset_z:.2f} to {max_tileset_z:.2f}")
+
     def create_gltf(self):
+        logger.info("Creating glTF content")
 
         transform = np.array(
             [
@@ -250,23 +288,26 @@ class Cesium3DTile:
 
         transform = transform.flatten("F")
 
-        # print("creating glTF")
         gltf = GlTF.from_binary_arrays(
             self.geometries, transform=transform, batched=True
         )
 
         if self.debugCreateGLB == True:
-            with open(self.save_to + self.save_as + ".glb", "bw") as f:
+            glb_path = self.save_to + self.save_as + ".glb"
+            logger.debug(f"Saving debug GLB file to: {glb_path}")
+            with open(glb_path, "bw") as f:
                 f.write(bytes(gltf.to_array()))
 
         self.gltf = gltf
+        logger.info("glTF creation complete")
 
     def create_batch_table(self):
-        # print("Creating Batch table")
+        logger.debug("Creating batch table")
 
         bt = BatchTable()
 
         if self.batch_table_uuid == True:
+            logger.debug("Adding UUID column to batch table")
             values = []
             for i in range(0, len(self.geodataframe)):
                 u = uuid.uuid4()
@@ -274,27 +315,32 @@ class Cesium3DTile:
             self.geodataframe["uuid"] = values
 
         attributes = self.geodataframe.columns.drop("geometry")
+        logger.debug(
+            f"Adding {len(attributes)} attributes to batch table: {attributes.tolist()}"
+        )
 
         for attr in attributes:
-            # print("Adding " + attr)
             values = []
             for v in self.geodataframe[attr].values:
                 values.append(str(v))
             bt.header.add_property_from_array(property_name=attr, array=values)
 
         self.batch_table = bt
+        logger.debug("Batch table creation complete")
 
         return bt
 
     def create_b3dm(self):
-
+        logger.info("Creating B3DM tile")
         # --- Convert to b3dm -----
         # create a b3dm tile_content directly from the glTF.
-        # print("Creating b3dm file")
         t = B3dm.from_glTF(self.gltf, bt=self.create_batch_table())
 
         # to save our tile as a .b3dm file
-        t.save_as(os.path.join(self.save_to, self.get_filename()))
+        output_path = os.path.join(self.save_to, self.get_filename())
+        logger.info(f"Saving B3DM tile to: {output_path}")
+        t.save_as(output_path)
+        logger.info("B3DM tile creation complete")
 
     def get_filename(self):
         return self.save_as + self.FILE_EXT
