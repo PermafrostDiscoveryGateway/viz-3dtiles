@@ -61,3 +61,44 @@ tileset.write_file()
 See [/test/test.py](test/test.py) which creates an example tileset.
 
 Usage: from the base directory (`./viz-3dtiles`) run `python test/test.py`
+
+## Development Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/PermafrostDiscoveryGateway/viz-3dtiles.git
+cd viz-3dtiles
+```
+
+2. Install in development mode with dev dependencies:
+
+### Using UV (Recommended)
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+```
+
+### Using Pip
+```bash
+python3 -m venv .3dtilesenv
+source .3dtilesenv/bin/activate
+pip install -e ".[dev]"
+```
+
+3. Install pre-commit hooks:
+```bash
+pre-commit install
+```
+
+4. (Optional) Run pre-commit on all files:
+```bash
+pre-commit run --all-files
+```
+
+The pre-commit hooks will automatically run on each commit and include:
+- Code formatting with Black
+- Import sorting with isort
+- Linting with flake8
+- Type checking with mypy
+- Basic file checks (trailing whitespace, YAML syntax, etc.

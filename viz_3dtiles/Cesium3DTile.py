@@ -12,6 +12,7 @@ import os
 import uuid
 import pyproj
 
+
 class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
@@ -20,7 +21,9 @@ class Cesium3DTile:
         self.geodataframe = GeoDataFrame()
         self.z = 0
         self.save_as = "model"
-        self.save_to = os.path.dirname(os.path.abspath(__file__))+r"../" # base dir of repo
+        self.save_to = (
+            os.path.dirname(os.path.abspath(__file__)) + r"../"
+        )  # base dir of repo
         self.max_features = 99999999999
         self.geometries = []
         self.gltf = None
@@ -29,12 +32,12 @@ class Cesium3DTile:
         self.max_width = 0
         self.min_tileset_z = 0
         self.max_tileset_z = 0
-        
+
         # A set of dynamically-generated properties to add to the 3DTile BatchTable.
         # Any properties already set via the original file or Geodataframe will be kept intact.
-        self.batch_table_uuid=True
-        self.batch_table_centroid=False
-        self.batch_table_area=False
+        self.batch_table_uuid = True
+        self.batch_table_centroid = False
+        self.batch_table_area = False
 
         # A dictionary of key:value pairs for which matching polygons will be removed.
         # e.g { centroid_within_tile: True }
@@ -88,7 +91,7 @@ class Cesium3DTile:
         filepath : string
             The path to the file to convert
         """
-        gdf : GeoDataFrame = geopandas.read_file(filepath)
+        gdf: GeoDataFrame = geopandas.read_file(filepath)
         self.from_geodataframe(gdf, crs, z)
 
     def from_geodataframe(self, gdf, crs=None, z=0):
@@ -98,19 +101,20 @@ class Cesium3DTile:
 
         if gdf.crs == None:
             if crs == None:
-                raise Exception("The vector file must have a CRS defined,"
-                                " or a crs parameter must be provided.")
+                raise Exception(
+                    "The vector file must have a CRS defined,"
+                    " or a crs parameter must be provided."
+                )
             gdf = gdf.set_crs(crs)
 
         self.geodataframe = gdf
 
-        #Filter out polygons as needed
+        # Filter out polygons as needed
         self.filter_polygons()
 
         # Create a transformer to re-project polygons to the Cesium CRS for tesselation.
         self.transformer = pyproj.Transformer.from_proj(
-            gdf.crs, # source CRS
-            pyproj.Proj(self.CESIUM_EPSG) # destination CRS
+            gdf.crs, pyproj.Proj(self.CESIUM_EPSG)  # source CRS  # destination CRS
         )
 
         self.transformed_geometries = gdf.geometry.apply(self.polygon_transformer)
@@ -121,25 +125,25 @@ class Cesium3DTile:
 
     def polygon_transformer(self, polygon):
         if not polygon.has_z:
-            polygon = Polygon([(x, y, 0) for x,y in polygon.exterior.coords])
+            polygon = Polygon([(x, y, 0) for x, y in polygon.exterior.coords])
         return transform(self.transformer.transform, polygon)
 
     def filter_polygons(self):
-        #Filter out polygons beyond the maximum
+        # Filter out polygons beyond the maximum
         if self.max_features is not None:
-            self.geodataframe = self.geodataframe[0:self.max_features]
+            self.geodataframe = self.geodataframe[0 : self.max_features]
 
-        #Filter polygons with a certain attribute
+        # Filter polygons with a certain attribute
         for key, value in self.filter_by_attributes.items():
-            try: 
+            try:
                 self.geodataframe = self.geodataframe[self.geodataframe[key] == value]
             except:
-                print("Not filtering out polygons for attribute " + key);
+                print("Not filtering out polygons for attribute " + key)
 
     def tesselate(self):
-        min_tileset_z=9e99
-        max_tileset_z=-9e99
-        max_width=-9e99
+        min_tileset_z = 9e99
+        max_tileset_z = -9e99
+        max_width = -9e99
 
         for geom in self.transformed_geometries:
 
@@ -154,49 +158,67 @@ class Cesium3DTile:
 
             # Calculate the bounding box First get the z values since shapely
             # bounds function does not support 3D geom/z values)
-            zs = [z for (x,y,z) in get_coordinates(geom, include_z=True)]
-            minz=min(zs)
-            maxz=max(zs)
+            zs = [z for (x, y, z) in get_coordinates(geom, include_z=True)]
+            minz = min(zs)
+            maxz = max(zs)
             bounds = multipolygon.bounds
-            box_degrees = [ [bounds[2], bounds[3], maxz],
-                            [bounds[0], bounds[1], minz] ]
+            box_degrees = [[bounds[2], bounds[3], maxz], [bounds[0], bounds[1], minz]]
 
             # Cache the min and max z values for fast retrieval later
             if minz < min_tileset_z:
-                min_tileset_z=minz
+                min_tileset_z = minz
             if maxz > max_tileset_z:
-                max_tileset_z=maxz
-            
+                max_tileset_z = maxz
+
             if geom.length > max_width:
                 max_width = geom.length
 
             # generate the glTF part from the binary arrays.
-            self.geometries.append({ 'position': positions, 'normal': normals, 'bbox': box_degrees})
+            self.geometries.append(
+                {"position": positions, "normal": normals, "bbox": box_degrees}
+            )
 
             self.max_width = max_width
             self.max_tileset_z = max_tileset_z
             self.min_tileset_z = min_tileset_z
 
-
     def create_gltf(self):
 
         transform = np.array(
-            [[
-                1.0, 0.0,  0.0, 0.0,
-                0.0, 0.0, -1.0, 0.0,
-                0.0, 1.0,  0.0, 0.0,
-                0.0, 0.0,  0.0, 1.0
-            ]], dtype=float)
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    -1.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                ]
+            ],
+            dtype=float,
+        )
 
-        transform = transform.flatten('F')
+        transform = transform.flatten("F")
 
         # print("creating glTF")
-        gltf = GlTF.from_binary_arrays(self.geometries, transform=transform, batched=True)
+        gltf = GlTF.from_binary_arrays(
+            self.geometries, transform=transform, batched=True
+        )
 
         if self.debugCreateGLB == True:
             with open(self.save_to + self.save_as + ".glb", "bw") as f:
                 f.write(bytes(gltf.to_array()))
-        
+
         self.gltf = gltf
 
     def create_batch_table(self):
@@ -205,9 +227,9 @@ class Cesium3DTile:
         bt = BatchTable()
 
         if self.batch_table_uuid == True:
-            values=[]
+            values = []
             for i in range(0, len(self.geodataframe)):
-                u=uuid.uuid4()
+                u = uuid.uuid4()
                 values.append(u.urn)
             self.geodataframe["uuid"] = values
 
@@ -215,7 +237,7 @@ class Cesium3DTile:
 
         for attr in attributes:
             # print("Adding " + attr)
-            values=[]
+            values = []
             for v in self.geodataframe[attr].values:
                 values.append(str(v))
             bt.header.add_property_from_array(property_name=attr, array=values)
@@ -224,9 +246,6 @@ class Cesium3DTile:
 
         return bt
 
-
-
-            
     def create_b3dm(self):
 
         # --- Convert to b3dm -----
