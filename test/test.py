@@ -1,5 +1,5 @@
 #!/usr/local/opt/python3
-from viz_3dtiles import Cesium3DTile, Tileset
+from pdg3dtiles import Cesium3DTile, Tileset
 import os
 
 # usage: from ./viz-3dtiles run `python test/test.py`

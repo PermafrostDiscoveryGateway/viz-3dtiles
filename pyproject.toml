@@ -1,5 +1,5 @@
 [project]
-name = "viz_3dtiles"
+name = "pdg3dtiles"
 version = "0.0.1"
 description = "A module that converts vector geometry files to Cesium 3D Tilesets"
 authors = [

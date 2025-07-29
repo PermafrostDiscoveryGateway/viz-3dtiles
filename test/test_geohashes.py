@@ -1,5 +1,5 @@
 #!/usr/local/opt/python3
-from viz_3dtiles import Cesium3DTile, Cesium3DTileset
+from pdg3dtiles import Cesium3DTile, Cesium3DTileset
 from polygon_geohasher.polygon_geohasher import geohash_to_polygon, polygon_to_geohashes
 from shapely import geometry
 import geopandas

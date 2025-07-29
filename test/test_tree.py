@@ -1,6 +1,6 @@
 import os
 import geopandas as gpd
-from viz_3dtiles import leaf_tile_from_gdf, parent_tile_from_children_json
+from pdg3dtiles import leaf_tile_from_gdf, parent_tile_from_children_json
 
 # usage: from ./viz-3dtiles run `python test/test_tree.py`
 
