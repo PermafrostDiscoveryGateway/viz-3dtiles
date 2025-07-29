@@ -4,13 +4,23 @@ A Python package for creating Cesium 3D Tilesets. This package uses a forked ver
 
 This package was developed for the [Permafrost Discovery Gateway](https://permafrost.arcticdata.io), an NSF-funded research project whose mission is to create an online platform for analysis and visualization of permafrost big imagery products to enable discovery and knowledge-generation.
 
-## Install via Conda or pip
+## Install via UV or pip
 
-### Conda
+### UV (Recommended)
+
+UV is a fast Python package manager. If you don't have UV installed, install it first:
 
 ```bash
-conda env create -n viz_3d --file environment.yml
-conda activate viz_3d
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then create a virtual environment and install dependencies:
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 ```
 
 ### Pip install
@@ -22,10 +32,10 @@ python3 -m venv .3dtilesenv
 source .3dtilesenv/bin/activate
 ```
 
-2. Install the requirements using `pip`:
+2. Install the package using `pip`:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Usage

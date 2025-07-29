@@ -1,0 +1,28 @@
+[project]
+name = "viz_3dtiles"
+version = "0.0.1"
+description = "A module that converts vector geometry files to Cesium 3D Tilesets"
+authors = [
+    { name = "Lauren Walker", email = "walker@nceas.ucsb.edu" }
+]
+license = { text = "Apache License Version 2.0" }
+readme = "README.md"
+requires-python = ">=3.5"
+dependencies = [
+    "numpy >=1.20, <2.0",
+    "pandas >=1.4, <2.0",
+    "shapely >=2.0b2",
+    "geopandas >=0.12, <1.0",
+    "open3d <0.19.0",
+    "pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git#egg=pdgpy3dtiles"
+]
+
+[project.urls]
+Homepage = "https://github.com/PermafrostDiscoveryGateway/viz-3dtiles"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
