@@ -198,16 +198,25 @@ class BoundingVolumeBox(BoundingVolume):
         column must be ONLY polygons).
         """
 
+        print('Warning: This method no longer works for Shapely version 2.0b2')
+
         # Check that the geometry contains polygons only
-        num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')
-        if num_non_polys > 0:
-            raise ValueError('GeoDataFrame geometry can only contain polygons')
+        gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
+        gdf = gdf.explode(index_parts=False, ignore_index=True)
+        gdf = gdf[gdf.geom_type == "Polygon"]
+        if len(gdf) == 0:
+            raise ValueError('No Polygon geometries after exploding input.')
 
         # Check if there are z coordinates and add 0 if not
-        if gdf.has_z.all() == False:
-            gdf['geometry'] = gdf['geometry'].apply(lambda poly: Polygon(
-                [(x, y, 0) for x, y in poly.exterior.coords]))
-
+        if not gdf.has_z.all():
+            def _ensure_z(poly: Polygon) -> Polygon:
+                coords = [
+                      (c[0], c[1], c[2] if len(c) == 3 else 0.0)
+                   for c in poly.exterior.coords
+                  ]
+                return Polygon(coords)
+        gdf['geometry'] = gdf['geometry'].apply(_ensure_z)
+        
         # Check that the CRS is not None
         if gdf.crs is None:
             raise ValueError('GeoDataFrame must have a CRS')
