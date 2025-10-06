@@ -1,9 +1,14 @@
 [project]
 name = "pdg3dtiles"
-version = "0.0.1"
+version = "1.0.0"
 description = "A module that converts vector geometry files to Cesium 3D Tilesets"
 authors = [
-    { name = "Lauren Walker", email = "walker@nceas.ucsb.edu" }
+    {name = "Robyn Thiessen-Bock", email = "thiessenbock@nceas.ucsb.edu"},
+    {name = "Juliet Cohen", email = "jcohen@nceas.ucsb.edu"},
+    {name = "Lauren Walker", email = "walker@nceas.ucsb.edu"},
+    {name = "Matthew B. Jones", email = "jones@nceas.ucsb.edu"},
+    {name = "Rushiraj Nenuji", email = "nenuji@nceas.ucsb.edu"},
+    {name = "Alyona Kosobokova", email = "alyonak@nceas.ucsb.edu"}  
 ]
 license = { text = "Apache License Version 2.0" }
 readme = "README.md"
