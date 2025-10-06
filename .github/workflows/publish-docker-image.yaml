@@ -1,0 +1,49 @@
+name: "Build and publish container image"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "feature-3dt-k8s"
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+
+
+env:
+  REGISTRY: "ghcr.io"
+  IMAGE_TAG: "${{ github.ref_type == 'tag' && github.ref_name || 'latest' }}"
+
+
+jobs:
+
+  build-and-release-image:
+    name: "Build and release container image"
+    runs-on: "ubuntu-latest"
+
+    permissions:
+      packages: "write"
+      attestations: "write"
+
+    steps:
+      - name: "Check out repository"
+        uses: "actions/checkout@v3"
+
+      - name: "Set IMAGE_NAME with lowercase repository owner"
+        run: |
+          echo "IMAGE_NAME=$(echo '${{ github.repository_owner }}/pdg3dtiles' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: "Build container image"
+        run: |
+          docker build --tag "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}" .
+
+      - name: "GHCR login"
+        uses: "docker/login-action@v2"
+        with:
+          registry: "${{ env.REGISTRY }}"
+          username: "${{ github.repository_owner }}"
+          password: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: "Push to GHCR"
+        run: |
+          docker push "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

@@ -26,11 +26,12 @@ class BoundingVolume(object):
         # Check that values is a list or array
         if not isinstance(values, (list, np.ndarray, dict)):
             raise ValueError(
-                'BoundingVolume values must be a list of 6 or 12 numbers, or a'
-                ' dict of west, east, south, and north degrees')
+                "BoundingVolume values must be a list of 6 or 12 numbers, or a"
+                " dict of west, east, south, and north degrees"
+            )
         if isinstance(values, dict):
-            box_vals = values.get('box')
-            region_vals = values.get('region')
+            box_vals = values.get("box")
+            region_vals = values.get("region")
             if box_vals is not None:
                 values = box_vals
             elif region_vals is not None:
@@ -43,44 +44,45 @@ class BoundingVolume(object):
             self.__init__(values)
         else:
             raise ValueError(
-                'BoundingVolume values must be a list of 12 numbers '
-                '(to create a box) or 6 numbers (to create a region)')
+                "BoundingVolume values must be a list of 12 numbers "
+                "(to create a box) or 6 numbers (to create a region)"
+            )
 
     @staticmethod
     def is_degree_dict(values):
         """
         Check if values is a dict of west, east, south, and north degrees.
         """
-        degrees = ['west', 'east', 'south', 'north']
+        degrees = ["west", "east", "south", "north"]
         return isinstance(values, dict) and all(k in values for k in degrees)
 
-    @ classmethod
-    def from_points(cls, points, type='box'):
-        if type == 'box':
+    @classmethod
+    def from_points(cls, points, type="box"):
+        if type == "box":
             return BoundingVolumeBox.from_points(points)
-        elif type == 'region':
+        elif type == "region":
             return BoundingVolumeRegion.from_points(points)
 
-    @ classmethod
-    def from_gdf(cls, gdf, type='box'):
-        if type == 'box':
+    @classmethod
+    def from_gdf(cls, gdf, type="box"):
+        if type == "box":
             return BoundingVolumeBox.from_gdf(gdf)
-        elif type == 'region':
+        elif type == "region":
             return BoundingVolumeRegion.from_gdf(gdf)
 
-    @ classmethod
-    def from_z_polygons(cls, polys, type='box'):
+    @classmethod
+    def from_z_polygons(cls, polys, type="box"):
         """
         Create a BoundingVolumeBox or BoundingVolumeRegion given
         a list of Z POLYGONS
         """
         points = get_coordinates(polys, include_z=True)
-        if type == 'box':
+        if type == "box":
             return BoundingVolumeBox.from_points(points)
-        elif type == 'region':
+        elif type == "region":
             return BoundingVolumeRegion.from_points(points)
 
-    @ classmethod
+    @classmethod
     def from_json(cls, json_data):
         """
         Parse a dict created from JSON into a BoundingVolume object. The source
@@ -89,10 +91,10 @@ class BoundingVolume(object):
         east, north, minimum height, maximum height]}
         """
         if not isinstance(json_data, dict):
-            raise ValueError('json_data must be a dictionary')
-        values = json_data.get('box') or json_data.get('region')
+            raise ValueError("json_data must be a dictionary")
+        values = json_data.get("box") or json_data.get("region")
         if not values:
-            raise ValueError('json_data must have a box or region key')
+            raise ValueError("json_data must have a box or region key")
         return cls(values)
 
     def to_json(self):
@@ -123,12 +125,12 @@ class BoundingVolume(object):
 
 class BoundingVolumeBox(BoundingVolume):
     """
-        A bounding volume box to use in a Cesium3DTileset. A bounding volume
-        box is an oriented bounding box or a minimum area bounding box.
+    A bounding volume box to use in a Cesium3DTileset. A bounding volume
+    box is an oriented bounding box or a minimum area bounding box.
     """
 
     CESIUM_EPSG = 4978
-    JSON_KEY = 'box'
+    JSON_KEY = "box"
 
     def __init__(self, values):
         """
@@ -156,7 +158,7 @@ class BoundingVolumeBox(BoundingVolume):
         self.yAxis = values[6:9]
         self.zAxis = values[9:12]
 
-    @ classmethod
+    @classmethod
     def from_points(cls, points):
         """
         Compute the oriented bounding box for a set of 3D points.
@@ -190,7 +192,7 @@ class BoundingVolumeBox(BoundingVolume):
 
         return cls(box)
 
-    @ classmethod
+    @classmethod
     def from_gdf(cls, gdf):
         """
         Create a bounding volume box from a GeoPandas GeoDataFrame. Only
@@ -198,19 +200,30 @@ class BoundingVolumeBox(BoundingVolume):
         column must be ONLY polygons).
         """
 
+        print("Warning: This method no longer works for Shapely version 2.0b2")
+
         # Check that the geometry contains polygons only
-        num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')
-        if num_non_polys > 0:
-            raise ValueError('GeoDataFrame geometry can only contain polygons')
+        gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
+        gdf = gdf.explode(index_parts=False, ignore_index=True)
+        gdf = gdf[gdf.geom_type == "Polygon"]
+        if len(gdf) == 0:
+            raise ValueError("No Polygon geometries after exploding input.")
 
         # Check if there are z coordinates and add 0 if not
-        if gdf.has_z.all() == False:
-            gdf['geometry'] = gdf['geometry'].apply(lambda poly: Polygon(
-                [(x, y, 0) for x, y in poly.exterior.coords]))
+        if not gdf.has_z.all():
+
+            def _ensure_z(poly: Polygon) -> Polygon:
+                coords = [
+                    (c[0], c[1], c[2] if len(c) == 3 else 0.0)
+                    for c in poly.exterior.coords
+                ]
+                return Polygon(coords)
+
+        gdf["geometry"] = gdf["geometry"].apply(_ensure_z)
 
         # Check that the CRS is not None
         if gdf.crs is None:
-            raise ValueError('GeoDataFrame must have a CRS')
+            raise ValueError("GeoDataFrame must have a CRS")
 
         # check that the EPSG is correct
         if gdf.crs.to_epsg() != cls.CESIUM_EPSG:
@@ -322,10 +335,9 @@ class BoundingVolumeBox(BoundingVolume):
         box : numpy.ndarray
             A 12 element array representing the box.
         """
-        return np.concatenate(
-            [self.center, self.xAxis, self.yAxis, self.zAxis])
+        return np.concatenate([self.center, self.xAxis, self.yAxis, self.zAxis])
 
-    @ staticmethod
+    @staticmethod
     def __check_list_create_box(list_or_box):
         if isinstance(list_or_box, list):
             list_or_box = BoundingVolumeBox(list_or_box)
@@ -335,17 +347,17 @@ class BoundingVolumeBox(BoundingVolume):
 
 class BoundingVolumeRegion(BoundingVolume):
     """
-        A bounding volume region to use in a Cesium3DTileset. A bounding volume
-        defined by a box that is aligned to the coordinate reference system.
-        The boundingVolume.region property is an array of six numbers that
-        define the bounding geographic region with latitude, longitude, and
-        height coordinates with the order [west, south, east, north, minimum
-        height, maximum height]. It is also known as an Axis-Aligned Bounding
-        Box.
+    A bounding volume region to use in a Cesium3DTileset. A bounding volume
+    defined by a box that is aligned to the coordinate reference system.
+    The boundingVolume.region property is an array of six numbers that
+    define the bounding geographic region with latitude, longitude, and
+    height coordinates with the order [west, south, east, north, minimum
+    height, maximum height]. It is also known as an Axis-Aligned Bounding
+    Box.
     """
 
     CESIUM_EPSG = 4979
-    JSON_KEY = 'region'
+    JSON_KEY = "region"
 
     def __init__(self, values):
         """
@@ -378,15 +390,8 @@ class BoundingVolumeRegion(BoundingVolume):
         self.min_height = values[4]
         self.max_height = values[5]
 
-    @ classmethod
-    def from_degrees(
-            cls,
-            west,
-            south,
-            east,
-            north,
-            min_height=0,
-            max_height=0):
+    @classmethod
+    def from_degrees(cls, west, south, east, north, min_height=0, max_height=0):
         """
         Create a bounding volume region from degrees.
 
@@ -416,16 +421,13 @@ class BoundingVolumeRegion(BoundingVolume):
         return cls(vals)
 
     @staticmethod
-    def values_list_from_degrees(west,
-            south,
-            east,
-            north,
-            min_height=0,
-            max_height=0):
-        return np.deg2rad([west, south, east, north]).tolist() + \
-            [min_height, max_height]
+    def values_list_from_degrees(west, south, east, north, min_height=0, max_height=0):
+        return np.deg2rad([west, south, east, north]).tolist() + [
+            min_height,
+            max_height,
+        ]
 
-    @ classmethod
+    @classmethod
     def from_points(cls, points):
         """
         Compute the bounding volume region for a set of points. The x and y
@@ -442,11 +444,11 @@ class BoundingVolumeRegion(BoundingVolume):
         if isinstance(points, list):
             points = np.array(points)
         if not isinstance(points, np.ndarray):
-            raise ValueError('points must be a list or numpy array')
+            raise ValueError("points must be a list or numpy array")
 
         # Check that array is a 2 or 3 element array
         if points.shape[1] != 3 and points.shape[1] != 2:
-            raise ValueError('points must be a 2 or 3 element array')
+            raise ValueError("points must be a 2 or 3 element array")
 
         # Get the 3 values that define the minimum point along the x, y, and z
         # axes.
@@ -468,7 +470,7 @@ class BoundingVolumeRegion(BoundingVolume):
 
         return cls(values)
 
-    @ classmethod
+    @classmethod
     def from_gdf(cls, gdf):
         """
         Create a bounding volume region from a GeoPandas GeoDataFrame. Only
@@ -477,13 +479,13 @@ class BoundingVolumeRegion(BoundingVolume):
         """
 
         # Check that the geometry contains polygons only
-        num_non_polys = sum(gdf.geometry.type.unique() != 'Polygon')
+        num_non_polys = sum(gdf.geometry.type.unique() != "Polygon")
         if num_non_polys > 0:
-            raise ValueError('GeoDataFrame geometry can only contain polygons')
+            raise ValueError("GeoDataFrame geometry can only contain polygons")
 
         # Check that the CRS is not None
         if gdf.crs is None:
-            raise ValueError('GeoDataFrame must have a CRS')
+            raise ValueError("GeoDataFrame must have a CRS")
 
         # check that the EPSG is correct
         if gdf.crs.to_epsg() != cls.CESIUM_EPSG:
@@ -505,16 +507,18 @@ class BoundingVolumeRegion(BoundingVolume):
         coords = self.get_coords()
         heights = self.get_heights()
         # Compute the 8 corner vertices of the region
-        corners = np.array([
-            [coords[0], coords[1], heights[0]],
-            [coords[0], coords[1], heights[1]],
-            [coords[0], coords[3], heights[0]],
-            [coords[0], coords[3], heights[1]],
-            [coords[2], coords[1], heights[0]],
-            [coords[2], coords[1], heights[1]],
-            [coords[2], coords[3], heights[0]],
-            [coords[2], coords[3], heights[1]]
-        ])
+        corners = np.array(
+            [
+                [coords[0], coords[1], heights[0]],
+                [coords[0], coords[1], heights[1]],
+                [coords[0], coords[3], heights[0]],
+                [coords[0], coords[3], heights[1]],
+                [coords[2], coords[1], heights[0]],
+                [coords[2], coords[1], heights[1]],
+                [coords[2], coords[3], heights[0]],
+                [coords[2], coords[3], heights[1]],
+            ]
+        )
         return corners
 
     def get_coords(self):
@@ -527,10 +531,7 @@ class BoundingVolumeRegion(BoundingVolume):
             The array of outermost coordinates of the region, in the order
             [west, south, east, north].
         """
-        coords = np.array([
-            self.west, self.south,
-            self.east, self.north
-        ])
+        coords = np.array([self.west, self.south, self.east, self.north])
         return np.rad2deg(coords)
 
     def get_heights(self):
@@ -568,14 +569,11 @@ class BoundingVolumeRegion(BoundingVolume):
             min(this_coords[0], coords_other[0]),
             min(this_coords[1], coords_other[1]),
             max(this_coords[2], coords_other[2]),
-            max(this_coords[3], coords_other[3])
+            max(this_coords[3], coords_other[3]),
         ]
         new_coords = np.deg2rad(new_coords)
 
-        new_heights = [
-            min(this[4], other[4]),
-            max(this[5], other[5])
-        ]
+        new_heights = [min(this[4], other[4]), max(this[5], other[5])]
 
         new_values = np.concatenate([new_coords, new_heights]).tolist()
 
@@ -614,16 +612,18 @@ class BoundingVolumeRegion(BoundingVolume):
         region : numpy.ndarray
             A 6 element array representing the region.
         """
-        return np.array([
-            self.west,
-            self.south,
-            self.east,
-            self.north,
-            self.min_height,
-            self.max_height
-        ])
+        return np.array(
+            [
+                self.west,
+                self.south,
+                self.east,
+                self.north,
+                self.min_height,
+                self.max_height,
+            ]
+        )
 
-    @ staticmethod
+    @staticmethod
     def __check_list_create_region(list_or_region):
         if isinstance(list_or_region, list):
             list_or_region = BoundingVolumeRegion(list_or_region)
