@@ -6,14 +6,14 @@ from .Cesium3DTileset import Tileset, Asset, Content
 
 def leaf_tile_from_gdf(
     gdf,
-    dir='',
-    filename='tileset',
+    dir="",
+    filename="tileset",
     crs=None,
     z=0,
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
-    minify_json=True
+    minify_json=True,
 ):
     """
     Create a leaf tile in a Cesium 3D tileset tree. Convert a GeoDataFrame of
@@ -59,36 +59,33 @@ def leaf_tile_from_gdf(
     tile.save_as = filename
     tile.from_geodataframe(gdf, crs=crs, z=z)
     gdf = tile.geodataframe
-    tile_bounding_volume = BoundingVolume.from_z_polygons(tile.transformed_geometries)
+    tile_bounding_volume = BoundingVolume.from_gdf(gdf)
     tile.get_filename()
 
     # Only set the optional content bounding volume if it differs from the root
     # tile bounding volume
     root_bounding_volume = tile_bounding_volume
     content_bounding_volume = None
-    if(boundingVolume):
+    if boundingVolume:
         root_bounding_volume = BoundingVolume(boundingVolume)
         content_bounding_volume = tile_bounding_volume
 
     asset = Asset(tilesetVersion=tilesetVersion)
 
-    content = Content(
-        uri=tile.get_filename(),
-        boundingVolume=content_bounding_volume
-    )
+    content = Content(uri=tile.get_filename(), boundingVolume=content_bounding_volume)
 
     root_tile_data = {
-        'boundingVolume': root_bounding_volume,
-        'geometricError': geometricError or tile.max_width,
-        'content': content
+        "boundingVolume": root_bounding_volume,
+        "geometricError": geometricError or tile.max_width,
+        "content": content,
     }
     tileset_data = {
-        'asset': asset,
-        'geometricError': geometricError or tile.max_width,
-        'root': root_tile_data
+        "asset": asset,
+        "geometricError": geometricError or tile.max_width,
+        "root": root_tile_data,
     }
     tileset = Tileset(**tileset_data)
-    json_path = os.path.join(dir, filename + '.json')
+    json_path = os.path.join(dir, filename + ".json")
     tileset.to_file(json_path, minify=minify_json)
     return tile, tileset
 
@@ -107,13 +104,13 @@ def leaf_tile_from_gdf(
 
 def parent_tile_from_children_json(
     children,
-    dir='',
-    filename='tileset',
+    dir="",
+    filename="tileset",
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
     boundingVolumeSource="content",
-    minify_json=True
+    minify_json=True,
 ):
     """
     Create a parent tile in a Cesium 3D tileset tree. The parent tile will
@@ -178,17 +175,17 @@ def parent_tile_from_children_json(
     elif all(isinstance(child, Tileset) for child in children):
         if any(child.file_path is None for child in children):
             raise ValueError(
-                'Child tilesets must all be saved to a file before '
-                'being added to a parent tile. This is required because the parent '
-                'tile needs relative paths to the child tileset JSON.')
+                "Child tilesets must all be saved to a file before "
+                "being added to a parent tile. This is required because the parent "
+                "tile needs relative paths to the child tileset JSON."
+            )
         child_paths = [child.file_path for child in children]
     else:
-        raise ValueError(
-            'Children must be a list of paths or Tileset objects.')
+        raise ValueError("Children must be a list of paths or Tileset objects.")
 
     # Check that all the child JSON files exist
     if any(not os.path.exists(child_path) for child_path in child_paths):
-        raise ValueError('One or more child JSON files does not exist.')
+        raise ValueError("One or more child JSON files does not exist.")
 
     child_geo_errors = []
     child_tilesets = []
@@ -215,7 +212,7 @@ def parent_tile_from_children_json(
     new_tileset.root.children = None
 
     # Add the children to the parent tileset
-    bv_method = 'replace' if boundingVolume is None else None
+    bv_method = "replace" if boundingVolume is None else None
     bv_source = boundingVolumeSource
     new_tileset.add_children(child_root_tiles, bv_method, bv_source)
 
@@ -241,6 +238,6 @@ def parent_tile_from_children_json(
     # make output directory if it doesn't exist, then save
     if not os.path.exists(dir):
         os.makedirs(dir, exist_ok=True)
-    out_path = os.path.join(dir, filename + '.json')
+    out_path = os.path.join(dir, filename + ".json")
     new_tileset.to_file(out_path, minify=minify_json)
     return new_tileset
