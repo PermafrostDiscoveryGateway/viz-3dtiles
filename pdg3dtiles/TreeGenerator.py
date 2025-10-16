@@ -58,35 +58,8 @@ def leaf_tile_from_gdf(
     tile.save_to = dir
     tile.save_as = filename
     tile.from_geodataframe(gdf, crs=crs, z=z)
-    gdf = tile.geodataframe
-    tile_bounding_volume = BoundingVolume.from_gdf(gdf)
-    tile.get_filename()
 
-    # Only set the optional content bounding volume if it differs from the root
-    # tile bounding volume
-    root_bounding_volume = tile_bounding_volume
-    content_bounding_volume = None
-    if boundingVolume:
-        root_bounding_volume = BoundingVolume(boundingVolume)
-        content_bounding_volume = tile_bounding_volume
-
-    asset = Asset(tilesetVersion=tilesetVersion)
-
-    content = Content(uri=tile.get_filename(), boundingVolume=content_bounding_volume)
-
-    root_tile_data = {
-        "boundingVolume": root_bounding_volume,
-        "geometricError": geometricError or tile.max_width,
-        "content": content,
-    }
-    tileset_data = {
-        "asset": asset,
-        "geometricError": geometricError or tile.max_width,
-        "root": root_tile_data,
-    }
-    tileset = Tileset(**tileset_data)
-    json_path = os.path.join(dir, filename + ".json")
-    tileset.to_file(json_path, minify=minify_json)
+    tileset = Tileset.from_Cesium3DTiles(tile, os.path.join(dir, filename + ".json"))
     return tile, tileset
 
 

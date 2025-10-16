@@ -177,9 +177,18 @@ class Cesium3DTile:
     def remove_inf_nan(self):
         """Remove rows with inf or nan values from the geodataframe."""
         original_count = len(self.geodataframe)
-        self.geodataframe = self.geodataframe.replace(
-            [np.inf, -np.inf], np.nan
-        ).dropna()
+
+        # Replace inf values with nan in numeric columns only
+        num_cols = self.geodataframe.select_dtypes(include="number").columns
+        if len(num_cols) > 0:
+            self.geodataframe[num_cols] = self.geodataframe[num_cols].replace(
+                [np.inf, -np.inf], np.nan
+            )
+
+        logger.debug(f"Only dropping rows with NaN geometry values")
+        # Only drop rows where the geometry is null/invalid
+        self.geodataframe = self.geodataframe[self.geodataframe.geometry.notna()]
+
         removed_count = original_count - len(self.geodataframe)
         if removed_count > 0:
             logger.info(f"Removed {removed_count} rows with inf/nan values")
