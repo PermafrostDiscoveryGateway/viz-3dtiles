@@ -28,6 +28,7 @@ dev = [
     "pre-commit",
     "black",
     "pytest",
+    "flake8",
 ]
 
 [project.urls]
@@ -43,6 +44,3 @@ allow-direct-references = true
 [tool.black]
 line-length = 88
 target-version = ['py38']
-
-[project.optional-dependencies]
-dev = ["flake8>=7"]
