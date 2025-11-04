@@ -14,13 +14,13 @@ license = { text = "Apache License Version 2.0" }
 readme = "README.md"
 requires-python = ">=3.8, <3.10"
 dependencies = [
-    "numpy >=1.20, <2.0",
-    "pandas >=1.4, <2.0",
-    "shapely >=2.0.0",
-    "geopandas >=0.12, <1.0",
-    "pyproj >=3.0.0",
-    "open3d",
-    "pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git#egg=pdgpy3dtiles"
+  "numpy >=1.20, <2.0",
+  "pandas >=1.4, <2.0",
+  "shapely >=2.0.0",
+  "geopandas >=0.12, <1.0",
+  "pyproj >=3.0.0",
+  "open3d>=0.14,<0.19",
+  "pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git",
 ]
 
 [project.optional-dependencies]
