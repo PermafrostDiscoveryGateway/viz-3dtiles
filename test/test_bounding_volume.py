@@ -16,10 +16,11 @@ def test_bv_from_degree_dict_to_region():
     assert region.get_heights() == [0, 1000]
 
 def test_bv_from_json_roundtrip():
+    # JSON serialization/deserialization should work
     data = {"region": [-1.0, -0.5, 1.0, 0.5, 0, 100]}
     bv = BoundingVolume.from_json(data)
     j = bv.to_json()
-    assert isinstance(j, str)  # JSON string
+    assert isinstance(j, str)
     d = bv.to_dict()
     assert "region" in d or "box" in d
 

@@ -27,6 +27,7 @@ def test_asset_types_and_required():
         bad.validate()
 
 def test_content_init_with_bv_list_and_dict():
+    # Content should builds BoundingVolume from both list and dict inputs
     lst = [0,0,0, 1,0,0, 0,1,0, 0,0,1]
     c1 = Content(boundingVolume=lst, uri="tile.b3dm")
     assert isinstance(c1.boundingVolume, BoundingVolume)
@@ -35,5 +36,6 @@ def test_content_init_with_bv_list_and_dict():
     assert isinstance(c2.boundingVolume, BoundingVolume)
 
 def test_content_requires_uri():
+    # raises error if missing required 'uri'
     with pytest.raises(ValueError):
         Content() 
