@@ -214,7 +214,7 @@ class BoundingVolumeBox(BoundingVolume):
             def _ensure_z(poly: Polygon) -> Polygon:
                 coords = [(c[0], c[1], c[2] if len(c) == 3 else 0.0) for c in poly.exterior.coords]
                 return Polygon(coords)
-        gdf["geometry"] = gdf["geometry"].apply(_ensure_z)
+            gdf["geometry"] = gdf["geometry"].apply(_ensure_z)
 
         # Check that the CRS is not None
         if gdf.crs is None:
