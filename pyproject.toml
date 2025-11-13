@@ -20,6 +20,7 @@ dependencies = [
   "geopandas >=0.12, <1.0",
   "pyproj >=3.0.0",
   "open3d>=0.14,<0.19",
+  "fiona<1.10",
   "pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git",
 ]
 
