@@ -237,6 +237,9 @@ class Content(Base):
         """
         Initialize a Content object.
         """
+        if uri is None or (isinstance(uri, str) and uri.strip() == ""):
+            raise ValueError("uri is required for Content")
+        self.uri = uri
         if boundingVolume:
             if isinstance(boundingVolume, (list, dict)):
                 boundingVolume = BoundingVolume(boundingVolume)

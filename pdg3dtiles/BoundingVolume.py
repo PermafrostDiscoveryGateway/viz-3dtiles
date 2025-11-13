@@ -211,15 +211,10 @@ class BoundingVolumeBox(BoundingVolume):
 
         # Check if there are z coordinates and add 0 if not
         if not gdf.has_z.all():
-
             def _ensure_z(poly: Polygon) -> Polygon:
-                coords = [
-                    (c[0], c[1], c[2] if len(c) == 3 else 0.0)
-                    for c in poly.exterior.coords
-                ]
+                coords = [(c[0], c[1], c[2] if len(c) == 3 else 0.0) for c in poly.exterior.coords]
                 return Polygon(coords)
-
-        gdf["geometry"] = gdf["geometry"].apply(_ensure_z)
+            gdf["geometry"] = gdf["geometry"].apply(_ensure_z)
 
         # Check that the CRS is not None
         if gdf.crs is None:
@@ -417,7 +412,7 @@ class BoundingVolumeRegion(BoundingVolume):
         """
 
         # Convert the degrees to radians
-        vals = cls.values_list_from_degrees(vals)
+        vals = cls.values_list_from_degrees(west, south, east, north, min_height, max_height)
         return cls(vals)
 
     @staticmethod
