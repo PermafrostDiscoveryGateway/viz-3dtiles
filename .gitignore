@@ -145,3 +145,6 @@ dmypy.json
 test/run-cesium/node_modules/*
 test/run-cesium/package.json
 test/run-cesium/package-lock.json
+test/run-cesium/testing_config.js
+yarn.lock
+node_modules
