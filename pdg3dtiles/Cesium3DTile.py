@@ -177,18 +177,13 @@ class Cesium3DTile:
     def remove_inf_nan(self):
         """Remove rows with inf or nan values from the geodataframe."""
         original_count = len(self.geodataframe)
-
-        # Replace inf values with nan in numeric columns only
         num_cols = self.geodataframe.select_dtypes(include="number").columns
         if len(num_cols) > 0:
             self.geodataframe[num_cols] = self.geodataframe[num_cols].replace(
                 [np.inf, -np.inf], np.nan
             )
-
-        logger.debug(f"Only dropping rows with NaN geometry values")
-        # Only drop rows where the geometry is null/invalid
+        # only drop rows where the geometry is null/invalid
         self.geodataframe = self.geodataframe[self.geodataframe.geometry.notna()]
-
         removed_count = original_count - len(self.geodataframe)
         if removed_count > 0:
             logger.info(f"Removed {removed_count} rows with inf/nan values")
@@ -219,54 +214,44 @@ class Cesium3DTile:
 
     def tesselate(self):
         logger.info("Starting tessellation process")
-        min_tileset_z = 9e99
-        max_tileset_z = -9e99
-        max_width = -9e99
+        min_tileset_z = float("inf")
+        max_tileset_z = float("-inf")
+        max_width = float("-inf")
 
-        for i, geom in enumerate(self.transformed_geometries):
-            if i % 100 == 0:  # Log progress every 100 geometries
-                logger.debug(
-                    f"Processing geometry {i+1}/{len(self.transformed_geometries)}"
-                )
-
-            multipolygon = geom
-
-            # use the TriangleSoup helper class to transform the wkb into
-            # arrays of points and normals
-            ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
+        trans_geoms = self.transformed_geometries
+        n = len(trans_geoms)
+        geometries_append = self.geometries.append
+        for i, geom in enumerate(trans_geoms):
+            ts = TriangleSoup.from_wkb_multipolygon(geom.wkb)
             positions = ts.get_position_array()
             normals = ts.get_normal_array()
 
-            # Calculate the bounding box First get the z values since shapely
-            # bounds function does not support 3D geom/z values)
-            zs = [z for (x, y, z) in get_coordinates(geom, include_z=True)]
-            minz = min(zs)
-            maxz = max(zs)
-            bounds = multipolygon.bounds
-            box_degrees = [[bounds[2], bounds[3], maxz], [bounds[0], bounds[1], minz]]
+            coords = np.asarray(get_coordinates(geom, include_z=True))
+            if coords.size == 0:
+                continue
+            zvals = coords[:, 2]
+            minz = float(zvals.min())
+            maxz = float(zvals.max())
 
-            # Cache the min and max z values for fast retrieval later
+            minx, miny, maxx, maxy = geom.bounds
+            bbox = [[maxx, maxy, maxz], [minx, miny, minz]]
+
             if minz < min_tileset_z:
                 min_tileset_z = minz
             if maxz > max_tileset_z:
                 max_tileset_z = maxz
 
-            if geom.length > max_width:
-                max_width = geom.length
+            glen = geom.length
+            if glen > max_width:
+                max_width = glen
+            geometries_append({"position": positions, "normal": normals, "bbox": bbox})
 
-            # generate the glTF part from the binary arrays.
-            self.geometries.append(
-                {"position": positions, "normal": normals, "bbox": box_degrees}
-            )
+        self.max_width = 0.0 if max_width == float("-inf") else float(max_width)
+        self.min_tileset_z = 0.0 if min_tileset_z == float("inf") else float(min_tileset_z)
+        self.max_tileset_z = 0.0 if max_tileset_z == float("-inf") else float(max_tileset_z)
 
-            self.max_width = max_width
-            self.max_tileset_z = max_tileset_z
-            self.min_tileset_z = min_tileset_z
-
-        logger.info(
-            f"Tessellation complete. Processed {len(self.geometries)} geometries"
-        )
-        logger.debug(f"Z range: {min_tileset_z:.2f} to {max_tileset_z:.2f}")
+        logger.info(f"Tessellation complete. Processed {len(self.geometries):,} geometries")
+        logger.debug(f"Z range: {self.min_tileset_z:.2f} to {self.max_tileset_z:.2f}")
 
     def create_gltf(self):
         logger.info("Creating glTF content")
@@ -350,6 +335,16 @@ class Cesium3DTile:
         logger.info(f"Saving B3DM tile to: {output_path}")
         t.save_as(output_path)
         logger.info("B3DM tile creation complete")
+        # release memory
+        self.geometries.clear()
+        self.transformed_geometries = None
+        self.gltf = None
+        self.batch_table = None
+        self.geodataframe = GeoDataFrame()
+
+        del t
+        import gc
+        gc.collect()
 
     def get_filename(self):
         return self.save_as + self.FILE_EXT
