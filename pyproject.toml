@@ -4,12 +4,12 @@ name = "pdg3dtiles"
 version = "1.0.0"
 description = "A module that converts vector geometry files to Cesium 3D Tilesets"
 authors = [
-  { name = "Robyn Thiessen-Bock", email = "thiessenbock@nceas.ucsb.edu" },
-  { name = "Juliet Cohen", email = "jcohen@nceas.ucsb.edu" },
-  { name = "Lauren Walker", email = "walker@nceas.ucsb.edu" },
-  { name = "Matthew B. Jones", email = "jones@nceas.ucsb.edu" },
-  { name = "Rushiraj Nenuji", email = "nenuji@nceas.ucsb.edu" },
-  { name = "Alyona Kosobokova", email = "alyonak@nceas.ucsb.edu" },
+  {name = "Robyn Thiessen-Bock", email = "thiessenbock@nceas.ucsb.edu" },
+  {name = "Juliet Cohen", email = "jcohen@nceas.ucsb.edu" },
+  {name = "Lauren Walker", email = "walker@nceas.ucsb.edu" },
+  {name = "Matthew B. Jones", email = "jones@nceas.ucsb.edu" },
+  {name = "Rushiraj Nenuji", email = "nenuji@nceas.ucsb.edu" },
+  {name = "Alyona Kosobokova", email = "alyonak@nceas.ucsb.edu" },
 ]
 license = { text = "Apache License Version 2.0" }
 readme = "README.md"
@@ -27,10 +27,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pre-commit",
-  "black",
-  "pytest",
-  "flake8",
+    "pre-commit",
+    "black",
+    "pytest",
+    "flake8",
 ]
 
 [project.urls]
@@ -46,8 +46,3 @@ allow-direct-references = true
 [tool.black]
 line-length = 88
 target-version = ["py311"]
-
-[tool.pytest.ini_options]
-filterwarnings = [
-  "ignore:.*shapely\\.geos.*:DeprecationWarning",
-]

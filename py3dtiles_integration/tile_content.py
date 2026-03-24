@@ -4,7 +4,6 @@ from pathlib import Path
 
 from py3dtiles.tileset.content.tile_content import TileContent as UpstreamTileContent
 
-
 class TileContent(UpstreamTileContent):
     def save_as(self, path):
         if isinstance(path, str):

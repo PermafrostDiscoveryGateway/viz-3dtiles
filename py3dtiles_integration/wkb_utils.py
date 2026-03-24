@@ -158,10 +158,6 @@ def parse(wkb: bytes) -> MultiPolygonsType:
 
     geomtype = struct.unpack(bo + "I", wkb[1:5])[0]
 
-    # Legacy behavior:
-    # - supports standard MultiPolygonZ (1006)
-    # - supports PolyhedralSurface (1015)
-    # - supports EWKB-style Z flag variant 2147483654
     has_z = (geomtype in [1006, 2147483654]) or (geomtype == 1015)
 
     pnt_offset = 24 if has_z else 16
@@ -231,7 +227,6 @@ def triangulate(
     polygon_xyz: list[float] = []
     holes: list[int] = []
 
-    # Legacy behavior: first hole starts after the exterior ring.
     delta = len(polygon[0])
     for ring in polygon[1:]:
         holes.append(delta)
@@ -241,7 +236,7 @@ def triangulate(
         for point in linestring:
             polygon_xyz.extend([point[0], point[1], point[2]])
 
-    # Legacy behavior: use earcut with 3D-stride input.
+    # use earcut with 3D-stride input
     triangles_idx = earcut.triangulate_float32(
         np.asarray(polygon_xyz, dtype=np.float32).reshape(-1, 3),
         np.asarray(holes, dtype=np.uint32),
@@ -260,8 +255,6 @@ def triangulate(
 
         cross_product = np.cross(p1 - p0, p2 - p0)
         invert = np.dot(vect_prod, cross_product) < 0
-
-        # Legacy behavior explicitly disables inversion.
         invert = False
 
         if invert:

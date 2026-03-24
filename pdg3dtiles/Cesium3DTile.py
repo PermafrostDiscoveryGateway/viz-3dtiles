@@ -3,10 +3,10 @@ import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon, LinearRing
 from shapely import get_coordinates
-from py3dtiles_integration.wkb_utils import TriangleSoup
-from py3dtiles_integration.gltf import GlTF
-from py3dtiles_integration.b3dm import B3dm
-from py3dtiles_integration.batch_table import BatchTable
+from .py3dtiles_integration.wkb_utils import TriangleSoup
+from .py3dtiles_integration.gltf import GlTF
+from .py3dtiles_integration.b3dm import B3dm
+from .py3dtiles_integration.batch_table import BatchTable
 import numpy as np
 import os
 import uuid
@@ -27,7 +27,9 @@ class Cesium3DTile:
         self.geodataframe = GeoDataFrame()
         self.z = 0
         self.save_as = "model"
-        self.save_to = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.save_to = (
+            os.path.dirname(os.path.abspath(__file__)) + r"../"
+        )  # base dir of repo
         self.max_features = 99999999999
         self.geometries = []
         self.gltf = None
@@ -115,6 +117,8 @@ class Cesium3DTile:
             raise
 
     def from_geodataframe(self, gdf, crs=None, z=0):
+
+        # Set the default z-level that we will set on 2D polygons
         self.z = z
         self.geometries = []
         self.gltf = None
@@ -126,7 +130,8 @@ class Cesium3DTile:
         if gdf.crs is None:
             if crs is None:
                 raise Exception(
-                    "The vector file must have a CRS defined, or a crs parameter must be provided."
+                    "The vector file must have a CRS defined,"
+                    " or a crs parameter must be provided."
                 )
             gdf = gdf.set_crs(crs)
 
@@ -134,6 +139,8 @@ class Cesium3DTile:
 
         # Remove rows with inf or nan values
         self.remove_inf_nan()
+
+        # Filter out polygons as needed
         self.filter_polygons()
         
         self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(self.to_multipolygon)

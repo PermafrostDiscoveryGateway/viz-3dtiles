@@ -535,4 +535,4 @@ def get_attribute(
     if len(values) == 0:
         return None
     else:
-        return np.concatenate(values)  # type: ignore [no-any-return] # for some reason mypy doesn't infer the type correctly here
+        return np.concatenate(values) 
