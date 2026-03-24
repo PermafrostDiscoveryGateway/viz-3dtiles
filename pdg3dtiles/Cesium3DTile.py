@@ -3,9 +3,10 @@ import geopandas
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import Polygon, MultiPolygon, LinearRing
 from shapely import get_coordinates
-from py3dtiles.tileset.content import GlTF, B3dm
-from py3dtiles.tileset.batch_table import BatchTable
-from py3dtiles.tilers.b3dm.wkb_utils import TriangleSoup
+from py3dtiles_integration.wkb_utils import TriangleSoup
+from py3dtiles_integration.gltf import GlTF
+from py3dtiles_integration.b3dm import B3dm
+from py3dtiles_integration.batch_table import BatchTable
 import numpy as np
 import os
 import uuid
@@ -26,9 +27,7 @@ class Cesium3DTile:
         self.geodataframe = GeoDataFrame()
         self.z = 0
         self.save_as = "model"
-        self.save_to = (
-            os.path.dirname(os.path.abspath(__file__)) + r"../"
-        )  # base dir of repo
+        self.save_to = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.max_features = 99999999999
         self.geometries = []
         self.gltf = None
@@ -116,15 +115,18 @@ class Cesium3DTile:
             raise
 
     def from_geodataframe(self, gdf, crs=None, z=0):
-
-        # Set the default z-level that we will set on 2D polygons
         self.z = z
+        self.geometries = []
+        self.gltf = None
+        self.batch_table = None
+        self.max_width = 0
+        self.min_tileset_z = 0
+        self.max_tileset_z = 0
 
-        if gdf.crs == None:
-            if crs == None:
+        if gdf.crs is None:
+            if crs is None:
                 raise Exception(
-                    "The vector file must have a CRS defined,"
-                    " or a crs parameter must be provided."
+                    "The vector file must have a CRS defined, or a crs parameter must be provided."
                 )
             gdf = gdf.set_crs(crs)
 
@@ -132,17 +134,13 @@ class Cesium3DTile:
 
         # Remove rows with inf or nan values
         self.remove_inf_nan()
-
-        # Filter out polygons as needed
         self.filter_polygons()
-
-        gdf["geometry"] = gdf["geometry"].apply(self.to_multipolygon)
-
-        # Re-project polygons to the Cesium CRS for tesselation.
+        
+        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(self.to_multipolygon)
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
-        gdf = gdf.to_crs(epsg=self.CESIUM_EPSG)
+        gdf_4978 = self.geodataframe.to_crs(epsg=self.CESIUM_EPSG)
 
-        self.transformed_geometries = gdf.geometry
+        self.transformed_geometries = gdf_4978.geometry
 
         self.tesselate()
         self.create_gltf()
