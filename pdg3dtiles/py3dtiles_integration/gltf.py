@@ -8,7 +8,7 @@ from pygltflib import GLTF2
 
 from py3dtiles.exceptions import InvalidGltfError
 from py3dtiles.tileset.content.gltf import Gltf as UpstreamGltf
-from py3dtiles_integration import gltf_utils
+from . import gltf_utils
 
 
 class Gltf(UpstreamGltf):
@@ -112,7 +112,6 @@ class Gltf(UpstreamGltf):
                 )
             )
 
-        # Assume upstream from_meshes is a classmethod using cls(...)
         result = cls.from_meshes(meshes, transform=transform)
         result.batch_length = len(arrays) if batched else 0
         return result
