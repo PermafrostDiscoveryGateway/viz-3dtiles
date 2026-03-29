@@ -1,24 +1,20 @@
-from __future__ import annotations
-
-import logging
-import os
-import uuid
-from pathlib import Path
-
+# -*- coding: utf-8 -*-
 import geopandas
-import numpy as np
 from geopandas.geodataframe import GeoDataFrame
+from shapely.geometry import Polygon, MultiPolygon, LinearRing
 from shapely import get_coordinates
-from shapely.geometry import LinearRing, MultiPolygon, Polygon
-
 from .py3dtiles_integration.wkb_utils import TriangleSoup
 from .py3dtiles_integration.b3dm import B3dm
 from .py3dtiles_integration.batch_table import BatchTable
+import numpy as np
+import os
+import uuid
+import logging
+from pathlib import Path
 
-
+# Initialize logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -41,30 +37,41 @@ class Cesium3DTile:
         self.min_tileset_z = 0
         self.max_tileset_z = 0
 
-        # Any properties already set via the original file/geodataframe will be kept.
+        # A set of dynamically-generated properties to add to the 3DTile BatchTable.
+        # Any properties already set via the original file or Geodataframe will be kept intact.
         self.batch_table_uuid = True
         self.batch_table_centroid = False
         self.batch_table_area = False
 
-        # Example: {"centroid_within_tile": True}
+        # A dictionary of key:value pairs for which matching polygons will be removed.
+        # e.g { centroid_within_tile: True }
         self.filter_by_attributes = {}
 
     def set_save_to_path(self, path):
         """
-        The filepath to save the 3DTile. If the path does not exist, it will be
-        created (handled by package py3dtiles).
+        The filepath to save the 3DTile. If the path does not exist, it will be created (handled by package py3dtiles)
+
+        Parameters
+        ----------
+        path : string
+            The destination of the 3DTile.
         """
         self.save_to = path
 
     def set_b3dm_name(self, name):
         """
         Set the filename, not filepath or extension, of the 3DTile.
+
+        Parameters
+        ----------
+        name : string
+            The filename (not path) of the 3DTile.
         """
         self.save_as = name
 
     def get_all_properties(self):
         """
-        Get all properties of the Cesium3DTile class as a dictionary.
+        Get all proerties of the Cesium3DTile class as a dictionary.
         """
         return {
             "z": self.z,
@@ -86,7 +93,7 @@ class Cesium3DTile:
         Parameters
         ----------
         filepath : string
-            The path to the file to convert.
+            The path to the file to convert
         """
         logger.info(f"Processing file: {filepath}")
         try:
@@ -101,13 +108,15 @@ class Cesium3DTile:
                     gdf = gdf.drop(columns=staging_columns)
 
             logger.debug(f"Columns after processing: {gdf.columns.tolist()}")
-            self.from_geodataframe(gdf, crs, z)
 
+            self.from_geodataframe(gdf, crs, z)
         except Exception as e:
             logger.error(f"Error reading file {filepath}: {str(e)}")
             raise
 
     def from_geodataframe(self, gdf, crs=None, z=0):
+
+        # Set the default z-level that we will set on 2D polygons
         self.z = z
         self.geometries = []
         self.gltf = None
@@ -118,30 +127,30 @@ class Cesium3DTile:
 
         if gdf.crs is None:
             if crs is None:
-                raise ValueError(
-                    "The vector file must have a CRS defined, or a crs parameter must be provided."
+                raise Exception(
+                    "The vector file must have a CRS defined,"
+                    " or a crs parameter must be provided."
                 )
             gdf = gdf.set_crs(crs)
 
         self.geodataframe = gdf
 
+        # Remove rows with inf or nan values
         self.remove_inf_nan()
+
+        # Filter out polygons as needed
         self.filter_polygons()
-
-        if len(self.geodataframe) == 0:
-            raise ValueError("No features remain after filtering.")
-
-        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(
-            self.to_multipolygon
-        )
-
+        
+        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(self.to_multipolygon)
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
         gdf_4978 = self.geodataframe.to_crs(epsg=self.CESIUM_EPSG)
+
         self.transformed_geometries = gdf_4978.geometry
 
         self.tesselate()
         self.create_b3dm()
 
+    # Ensure all geometries are MultiPolygon and 3D
     def make_3d(self, geom):
         """Adds a Z-coordinate to a geometry."""
         if geom.has_z:
@@ -162,20 +171,24 @@ class Cesium3DTile:
         """Converts a Polygon to a MultiPolygon."""
         if isinstance(geom, Polygon):
             return MultiPolygon([self.make_3d(geom)])
-        if isinstance(geom, MultiPolygon):
+        elif isinstance(geom, MultiPolygon):
             return MultiPolygon([self.make_3d(poly) for poly in geom.geoms])
-        raise ValueError("Geometry must be a Polygon or MultiPolygon")
+        else:
+            raise ValueError("Geometry must be a Polygon or MultiPolygon")
 
     def remove_inf_nan(self):
         """Remove rows with inf or nan values from the geodataframe."""
         original_count = len(self.geodataframe)
 
+        # Replace inf values with nan in numeric columns only
         num_cols = self.geodataframe.select_dtypes(include="number").columns
         if len(num_cols) > 0:
             self.geodataframe[num_cols] = self.geodataframe[num_cols].replace(
                 [np.inf, -np.inf], np.nan
             )
 
+        logger.debug(f"Only dropping rows with NaN geometry values")
+        # Only drop rows where the geometry is null/invalid
         self.geodataframe = self.geodataframe[self.geodataframe.geometry.notna()]
 
         removed_count = original_count - len(self.geodataframe)
@@ -183,6 +196,7 @@ class Cesium3DTile:
             logger.info(f"Removed {removed_count} rows with inf/nan values")
 
     def filter_polygons(self):
+        # Filter out polygons beyond the maximum
         if self.max_features is not None:
             original_count = len(self.geodataframe)
             self.geodataframe = self.geodataframe.iloc[: self.max_features]
@@ -191,6 +205,7 @@ class Cesium3DTile:
                     f"Limited features to {self.max_features} (was {original_count})"
                 )
 
+        # Filter polygons with a certain attribute
         for key, value in self.filter_by_attributes.items():
             try:
                 original_count = len(self.geodataframe)
@@ -211,30 +226,37 @@ class Cesium3DTile:
         max_width = -9e99
 
         for i, geom in enumerate(self.transformed_geometries):
-            if i % 100 == 0:
+            if i % 100 == 0:  # Log progress every 100 geometries
                 logger.debug(
-                    f"Processing geometry {i + 1}/{len(self.transformed_geometries)}"
+                    f"Processing geometry {i+1}/{len(self.transformed_geometries)}"
                 )
 
             multipolygon = geom
 
+            # use the TriangleSoup helper class to transform the wkb into
+            # arrays of points and normals
             ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
             positions = ts.get_position_array()
             normals = ts.get_normal_array()
 
-            zs = [z for (_, _, z) in get_coordinates(geom, include_z=True)]
+            # Calculate the bounding box First get the z values since shapely
+            # bounds function does not support 3D geom/z values)
+            zs = [z for (x, y, z) in get_coordinates(geom, include_z=True)]
             minz = min(zs)
             maxz = max(zs)
             bounds = multipolygon.bounds
             box_degrees = [[bounds[2], bounds[3], maxz], [bounds[0], bounds[1], minz]]
 
+            # Cache the min and max z values for fast retrieval later
             if minz < min_tileset_z:
                 min_tileset_z = minz
             if maxz > max_tileset_z:
                 max_tileset_z = maxz
+
             if geom.length > max_width:
                 max_width = geom.length
 
+            # generate the glTF part from the binary arrays.
             self.geometries.append(
                 {"position": positions, "normal": normals, "bbox": box_degrees}
             )
@@ -249,11 +271,15 @@ class Cesium3DTile:
 
     def create_batch_table(self):
         logger.debug("Creating batch table")
+
         bt = BatchTable()
 
-        if self.batch_table_uuid:
+        if self.batch_table_uuid == True:
             logger.debug("Adding UUID column to batch table")
-            values = [uuid.uuid4().urn for _ in range(len(self.geodataframe))]
+            values = []
+            for i in range(0, len(self.geodataframe)):
+                u = uuid.uuid4()
+                values.append(u.urn)
             self.geodataframe["uuid"] = values
 
         attributes = self.geodataframe.columns.drop("geometry")
@@ -262,16 +288,18 @@ class Cesium3DTile:
         )
 
         for attr in attributes:
-            values = [str(v) for v in self.geodataframe[attr].values]
+            values = []
+            for v in self.geodataframe[attr].values:
+                values.append(str(v))
             bt.header.add_property_from_array(property_name=attr, array=values)
 
         self.batch_table = bt
         logger.debug("Batch table creation complete")
+
         return bt
 
     def create_b3dm(self):
         logger.info("Creating B3DM tile")
-
         if not self.geometries:
             logger.warning("Skipping B3DM creation: no tessellated geometries.")
             return
