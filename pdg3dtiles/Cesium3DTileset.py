@@ -661,13 +661,31 @@ class Tileset(Base):
 
         for t in tiles:
             ge = +t.max_width
-            tile_bv = BoundingVolume.from_z_polygons(t.transformed_geometries)
+            content_bv = BoundingVolume.from_z_polygons(
+                t.transformed_geometries,
+                type="box",
+            )
+            gdf_ll = t.geodataframe.to_crs(epsg=4326)
+            minx, miny, maxx, maxy = gdf_ll.total_bounds
+
+            root_bv = BoundingVolume({
+                "west": float(minx),
+                "south": float(miny),
+                "east": float(maxx),
+                "north": float(maxy),
+                "min_height": 0.0,
+                "max_height": 0.0,
+            })
+
             uri = os.path.join(t.save_to, t.get_filename())
             uri = os.path.relpath(uri, os.path.dirname(file_path))
             tile_obj = Tile(
-                boundingVolume=tile_bv,
+                boundingVolume=root_bv,
                 geometricError=t.max_width,
-                content=Content(uri=uri),
+                content=Content(
+                    uri=uri,
+                    boundingVolume=content_bv,
+                ),
             )
             tile_objs.append(tile_obj)
 
@@ -677,8 +695,7 @@ class Tileset(Base):
             root = Tile(geometricError=ge)
             root.add_children(tile_objs, bv_method="replace", bv_source="root")
 
-        ts = cls(geometricError=ge, root=root)
-
+        ts = cls( asset={"version": "1.0","tilesetVersion": "1"},geometricError=ge, root=root)
         ts.to_file(file_path)
 
         return ts

@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 import numpy as np
 import numpy.typing as npt
 from py3dtiles.exceptions import (
-    Invalid3dtilesError,
-    InvalidBatchTableError,
+    Py3dtilesException
 )
 from py3dtiles.typing import BatchTableHeaderDataType
 from .constants import COMPONENT_TYPE_NUMPY_MAPPING, DTYPE_TO_COMPONENT_TYPE_MAPPING
@@ -220,7 +219,7 @@ class BatchTable:
                 continue
 
             if previous_byte_offset != property_definition["byteOffset"]:
-                raise Invalid3dtilesError(
+                raise Py3dtilesException(
                     f"The byte offset is {property_definition['byteOffset']} but the byte offset computed is {previous_byte_offset}"
                 )
 
