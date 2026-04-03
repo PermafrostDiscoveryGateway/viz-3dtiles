@@ -628,6 +628,28 @@ class Tileset(Base):
         """
         self.root.add_content(content, bv)
 
+    # we can implemet this if we want to calculate the height for bounding volume
+    # commented out to prioritize faster processing 
+
+    # @staticmethod
+    # def _get_height_range(transformed_geometries):
+    #     min_z = None
+    #     max_z = None
+
+    #     for geom in transformed_geometries:
+    #         for ring in geom:
+    #             for pt in ring:
+    #                 if len(pt) >= 3:
+    #                     z = float(pt[2])
+    #                     if min_z is None or z < min_z:
+    #                         min_z = z
+    #                     if max_z is None or z > max_z:
+    #                         max_z = z
+
+    #     if min_z is None:
+    #         return 0.0, 0.0
+    #     return min_z, max_z
+
     @classmethod
     def from_Cesium3DTiles(cls, tiles, file_path="tileset.json"):
         """
@@ -660,13 +682,17 @@ class Tileset(Base):
         tile_objs = []
 
         for t in tiles:
-            ge = +t.max_width
+            ge = max(ge, t.max_width)
             content_bv = BoundingVolume.from_z_polygons(
                 t.transformed_geometries,
                 type="box",
             )
             gdf_ll = t.geodataframe.to_crs(epsg=4326)
             minx, miny, maxx, maxy = gdf_ll.total_bounds
+
+            # we can implemet this if we want to calculate the height for bounding volume
+            # commented out to prioritize faster processing 
+            # min_height, max_height = cls._get_height_range(t.transformed_geometries)
 
             root_bv = BoundingVolume({
                 "west": float(minx),
@@ -695,7 +721,7 @@ class Tileset(Base):
             root = Tile(geometricError=ge)
             root.add_children(tile_objs, bv_method="replace", bv_source="root")
 
-        ts = cls( asset={"version": "1.0","tilesetVersion": "1"},geometricError=ge, root=root)
+        ts = cls( asset={"version": "1.0"},geometricError=ge, root=root)
         ts.to_file(file_path)
 
         return ts

@@ -145,9 +145,9 @@ class Cesium3DTile:
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
         gdf_4978 = self.geodataframe.to_crs(epsg=self.CESIUM_EPSG)
 
-        self.transformed_geometries = gdf_4978.geometry
-
-        self.tesselate()
+        # this is to filter out any geometries that did not tessellate
+        valid_mask = self.tesselate(gdf_4978.geometry)
+        self.geodataframe = self.geodataframe[valid_mask].copy()
         self.create_b3dm()
 
     # Ensure all geometries are MultiPolygon and 3D
@@ -219,47 +219,58 @@ class Cesium3DTile:
                     f"Could not filter polygons by attribute '{key}': {str(e)}"
                 )
 
-    def tesselate(self):
+    def tesselate(self, geometries):
         logger.info("Starting tessellation process")
-        min_tileset_z = 9e99
-        max_tileset_z = -9e99
-        max_width = -9e99
+        min_tileset_z = None
+        max_tileset_z = None
+        max_width = 0
+        valid_mask = []
 
-        for i, geom in enumerate(self.transformed_geometries):
+        for i, geom in enumerate(geometries):
             if i % 100 == 0:  # Log progress every 100 geometries
                 logger.debug(
                     f"Processing geometry {i+1}/{len(self.transformed_geometries)}"
                 )
 
             multipolygon = geom
-
-            # use the TriangleSoup helper class to transform the wkb into
-            # arrays of points and normals
             ts = TriangleSoup.from_wkb_multipolygon(multipolygon.wkb)
             positions = ts.get_position_array()
             normals = ts.get_normal_array()
 
-            # Calculate the bounding box First get the z values since shapely
-            # bounds function does not support 3D geom/z values)
-            zs = [z for (x, y, z) in get_coordinates(geom, include_z=True)]
-            minz = min(zs)
-            maxz = max(zs)
-            bounds = multipolygon.bounds
-            box_degrees = [[bounds[2], bounds[3], maxz], [bounds[0], bounds[1], minz]]
+            is_valid = len(positions) > 0
+            valid_mask.append(is_valid)
 
-            # Cache the min and max z values for fast retrieval later
-            if minz < min_tileset_z:
+            if not is_valid:
+                continue
+
+            coords = get_coordinates(geom, include_z=True)
+            z_vals = coords[:, 2]
+            minz = float(z_vals.min())
+            maxz = float(z_vals.max())
+
+            if min_tileset_z is None or minz < min_tileset_z:
                 min_tileset_z = minz
-            if maxz > max_tileset_z:
+            if max_tileset_z is None or maxz > max_tileset_z:
                 max_tileset_z = maxz
 
-            if geom.length > max_width:
-                max_width = geom.length
+            minx, miny, maxx_geom, maxy_geom = multipolygon.bounds
+            dx = maxx_geom - minx
+            dy = maxy_geom - miny
+            tile_span = max(dx, dy)
+            if tile_span > max_width:
+                max_width = tile_span
 
-            # generate the glTF part from the binary arrays.
-            self.geometries.append(
-                {"position": positions, "normal": normals, "bbox": box_degrees}
-            )
+            self.geometries.append({
+                "position": positions,
+                "normal": normals,
+            })
+
+        if not self.geometries:
+            self.max_width = 0
+            self.max_tileset_z = 0
+            self.min_tileset_z = 0
+            logger.info("Tessellation complete. No valid geometries found.")
+            return valid_mask
 
         self.max_width = max_width
         self.max_tileset_z = max_tileset_z
@@ -268,13 +279,14 @@ class Cesium3DTile:
         logger.info(
             f"Tessellation complete. Processed {len(self.geometries)} geometries"
         )
+        return valid_mask
 
     def create_batch_table(self):
         logger.debug("Creating batch table")
 
         bt = BatchTable()
 
-        if self.batch_table_uuid == True:
+        if self.batch_table_uuid:
             logger.debug("Adding UUID column to batch table")
             values = []
             for i in range(0, len(self.geodataframe)):
