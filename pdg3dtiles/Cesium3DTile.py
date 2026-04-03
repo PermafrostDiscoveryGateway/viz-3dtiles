@@ -145,8 +145,10 @@ class Cesium3DTile:
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
         gdf_4978 = self.geodataframe.to_crs(epsg=self.CESIUM_EPSG)
 
+        self.transformed_geometries = gdf_4978.geometry
+
         # this is to filter out any geometries that did not tessellate
-        valid_mask = self.tesselate(gdf_4978.geometry)
+        valid_mask = self.tesselate()
         self.geodataframe = self.geodataframe[valid_mask].copy()
         self.create_b3dm()
 
@@ -219,14 +221,14 @@ class Cesium3DTile:
                     f"Could not filter polygons by attribute '{key}': {str(e)}"
                 )
 
-    def tesselate(self, geometries):
+    def tesselate(self):
         logger.info("Starting tessellation process")
         min_tileset_z = None
         max_tileset_z = None
         max_width = 0
         valid_mask = []
 
-        for i, geom in enumerate(geometries):
+        for i, geom in enumerate(self.transformed_geometries):
             if i % 100 == 0:  # Log progress every 100 geometries
                 logger.debug(
                     f"Processing geometry {i+1}/{len(self.transformed_geometries)}"
@@ -286,7 +288,7 @@ class Cesium3DTile:
 
         bt = BatchTable()
 
-        if self.batch_table_uuid:
+        if self.batch_table_uuid == True:
             logger.debug("Adding UUID column to batch table")
             values = []
             for i in range(0, len(self.geodataframe)):
