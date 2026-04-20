@@ -721,7 +721,7 @@ class Tileset(Base):
             root = Tile(geometricError=ge)
             root.add_children(tile_objs, bv_method="replace", bv_source="root")
 
-        ts = cls( asset={"version": "1.0"},geometricError=ge, root=root)
+        ts = cls( asset={"version": "1.0", "tilesetVersion":"1"},geometricError=ge, root=root)
         ts.to_file(file_path)
 
         return ts
