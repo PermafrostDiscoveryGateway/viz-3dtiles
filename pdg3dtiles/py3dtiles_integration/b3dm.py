@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import struct
 from typing import Any
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -180,6 +181,14 @@ class B3dm(LegacyTileContent):
     def get_extra_field(self, fieldname: str) -> npt.NDArray[Any] | None:
         accessor_name = f"_{fieldname.upper()}"
         return gltf_utils.get_attribute(self.body.gltf, accessor_name)
+    
+    def save_debug_glb(self, path: str | Path) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.body.gltf.set_min_alignment(8)
+
+        with open(path, "wb") as f:
+            f.write(b"".join(self.body.gltf.save_to_bytes()))
 
 
 class B3dmHeader(TileContentHeader):

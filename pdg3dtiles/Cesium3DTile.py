@@ -5,6 +5,7 @@ from shapely.geometry import Polygon, MultiPolygon, LinearRing
 from shapely import get_coordinates
 from .py3dtiles_integration.wkb_utils import TriangleSoup
 from .py3dtiles_integration.b3dm import B3dm
+from .py3dtiles_integration.b3dm_feature_table import B3dmFeatureTable
 from .py3dtiles_integration.batch_table import BatchTable
 import numpy as np
 import os
@@ -321,9 +322,10 @@ class Cesium3DTile:
         points_list = []
         normals_list = []
         triangles_list = []
+        batchids_list = []
         vertex_offset = 0
 
-        for geom in self.geometries:
+        for geom_index, geom in enumerate(self.geometries):
             raw_points = geom["position"]
             raw_normals = geom["normal"]
 
@@ -354,10 +356,12 @@ class Cesium3DTile:
 
             triangles = np.arange(len(points), dtype=np.uint32).reshape(-1, 3)
             triangles = triangles + vertex_offset
+            batchids = np.full(len(points), geom_index, dtype=np.float32)
 
             points_list.append(points)
             normals_list.append(normals)
             triangles_list.append(triangles)
+            batchids_list.append(batchids)
 
             vertex_offset += len(points)
 
@@ -368,17 +372,57 @@ class Cesium3DTile:
         all_points = np.vstack(points_list).astype(np.float32)
         all_normals = np.vstack(normals_list).astype(np.float32)
         all_triangles = np.vstack(triangles_list).astype(np.uint32)
+        all_batchids = np.concatenate(batchids_list).astype(np.float32)
+
+        # transform = np.array(
+        #     [
+        #         [
+        #             1.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             -1.0,
+        #             0.0,
+        #             0.0,
+        #             1.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             0.0,
+        #             1.0,
+        #         ]
+        #     ],
+        #     dtype=np.float32,
+        # ).flatten("F")
+
+        feature_table = B3dmFeatureTable()
+        feature_table.set_batch_length(len(points_list))
+
+        logger.info(f"B3dm module in use: {B3dm.__module__}")
+        logger.info(f"Feature table data before tile creation: {feature_table.header.data}")
+        logger.info(f"Batch IDs shape: {all_batchids.shape}")
 
         tile = B3dm.from_numpy_arrays(
             points=all_points,
             triangles=all_triangles,
             normal=all_normals,
+            batchids=all_batchids,
             batch_table=self.create_batch_table(),
+            feature_table=feature_table,
         )
 
         output_path = Path(self.save_to) / self.get_filename()
         output_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"Saving B3DM tile to: {output_path}")
+
+        if getattr(self, "debugCreateGLB", False):
+            glb_path = output_path.with_suffix(".glb")
+            logger.info(f"Saving debug GLB file to: {glb_path}")
+            tile.save_debug_glb(glb_path)
+
         tile.save_as(output_path)
         logger.info("B3DM tile creation complete")
 
