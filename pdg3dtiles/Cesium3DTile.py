@@ -150,7 +150,8 @@ class Cesium3DTile:
 
         # this is to filter out any geometries that did not tessellate
         valid_mask = self.tesselate()
-        self.geodataframe = self.geodataframe[valid_mask].copy()
+        self.geodataframe = self.geodataframe.loc[valid_mask].copy()
+        self.transformed_geometries = self.transformed_geometries.loc[valid_mask].copy()
         self.create_b3dm()
 
     # Ensure all geometries are MultiPolygon and 3D
@@ -323,6 +324,7 @@ class Cesium3DTile:
         normals_list = []
         triangles_list = []
         batchids_list = []
+        kept_indices = []
         vertex_offset = 0
 
         for geom_index, geom in enumerate(self.geometries):
@@ -347,56 +349,59 @@ class Cesium3DTile:
             normals = normals.reshape(-1, 3)
 
             if len(points) == 0:
+                logger.warning(f"Skipping geometry {geom_index}: no points")
                 continue
 
             if len(points) % 3 != 0:
-                raise ValueError(
-                    f"Expanded triangle vertices are not divisible by 3: {len(points)}"
+                logger.warning(
+                    f"Skipping geometry {geom_index}: expanded triangle vertices "
+                    f"are not divisible by 3: {len(points)}"
                 )
+                continue
+
+            unique_points = np.unique(points, axis=0)
+
+            if len(unique_points) < 4:
+                logger.warning(
+                    f"Skipping geometry {geom_index}: "
+                    f"fewer than 4 unique points"
+                )
+                continue
+
+            spread = np.ptp(unique_points, axis=0)
+
+            if np.count_nonzero(spread > 1e-5) < 2:
+                logger.warning(
+                    f"Skipping geometry {geom_index}: "
+                    f"too small coordinate spread {spread}"
+                )
+                continue
 
             triangles = np.arange(len(points), dtype=np.uint32).reshape(-1, 3)
             triangles = triangles + vertex_offset
-            batchids = np.full(len(points), geom_index, dtype=np.float32)
+            batchids = np.full(len(points), len(points_list), dtype=np.float32)
 
             points_list.append(points)
             normals_list.append(normals)
             triangles_list.append(triangles)
             batchids_list.append(batchids)
-
+            kept_indices.append(geom_index)
             vertex_offset += len(points)
 
         if not points_list:
             logger.warning("Skipping B3DM creation: no valid tessellated arrays.")
             return
 
+        self.geodataframe = self.geodataframe.iloc[kept_indices].copy()
+        self.transformed_geometries = self.transformed_geometries.iloc[kept_indices].copy()
         all_points = np.vstack(points_list).astype(np.float32)
         all_normals = np.vstack(normals_list).astype(np.float32)
         all_triangles = np.vstack(triangles_list).astype(np.uint32)
         all_batchids = np.concatenate(batchids_list).astype(np.float32)
 
-        # transform = np.array(
-        #     [
-        #         [
-        #             1.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             -1.0,
-        #             0.0,
-        #             0.0,
-        #             1.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             0.0,
-        #             1.0,
-        #         ]
-        #     ],
-        #     dtype=np.float32,
-        # ).flatten("F")
+        # Reverse for Cesium-facing orientation.
+        all_triangles = all_triangles[:, [0, 2, 1]]
+        all_normals = -all_normals
 
         feature_table = B3dmFeatureTable()
         feature_table.set_batch_length(len(points_list))
