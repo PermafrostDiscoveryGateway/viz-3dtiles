@@ -174,9 +174,11 @@ class GltfMesh:
             GltfAttribute(
                 "_BATCHID",
                 pygltflib.SCALAR,
-                batchids_component_type
-                if batchids_component_type is not None
-                else get_component_type_from_dtype(batchids.dtype),
+                (
+                    batchids_component_type
+                    if batchids_component_type is not None
+                    else get_component_type_from_dtype(batchids.dtype)
+                ),
                 batchids,
             )
             if batchids is not None
@@ -252,7 +254,11 @@ def gltf_from_meshes(
     # it also makes debugging easier. material_id = 0 is the default material, and that's it.
     # Note that the specification is ambiguous here, it's not clear if a gltf should always have a
     # default material OR if it's the viewer's job.
-    gltf.materials.append(pygltflib.Material())
+    # doubleSided=True: geographic polygon data often uses clockwise outer-ring
+    # winding, which produces inward-pointing ECEF normals. Back-face culling
+    # would hide the features when the camera is above the surface.
+    # doubleSided renders both faces.
+    gltf.materials.append(pygltflib.Material(doubleSided=True))
 
     for i, mesh in enumerate(meshes):
         node = pygltflib.Node(
@@ -535,4 +541,4 @@ def get_attribute(
     if len(values) == 0:
         return None
     else:
-        return np.concatenate(values) 
+        return np.concatenate(values)

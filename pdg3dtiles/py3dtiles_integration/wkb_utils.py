@@ -120,7 +120,7 @@ class TriangleSoup:
             else:
                 normals.append(normal / norm)
 
-        return np.array(face_attribute_to_array(normals))
+        return np.array(face_attribute_to_array(normals), dtype=np.float32)
 
     def get_bbox(self) -> list[npt.NDArray[np.float32]]:
         """
@@ -181,7 +181,7 @@ def parse(wkb: bytes) -> MultiPolygonsType:
             for _ in range(point_nb - 1):
                 pt = np.array(
                     struct.unpack(pnt_unpack, wkb[offset : offset + pnt_offset]),
-                    dtype=np.float32,
+                    dtype=np.float64,
                 )
                 offset += pnt_offset
                 line.append(pt)
@@ -201,7 +201,7 @@ def triangulate(
     Triangulates 3D polygons by projecting them to the dominant 2D plane,
     triangulating there, and mapping indices back to the original 3D vertices.
     """
-    vect_prod = np.array([0, 0, 0], dtype=np.float32)
+    vect_prod = np.array([0, 0, 0], dtype=np.float64)
     for i in range(len(polygon[0])):
         curr_edge = polygon[0][i]
         next_edge = polygon[0][(i + 1) % len(polygon[0])]
@@ -211,7 +211,6 @@ def triangulate(
                 (curr_edge[2] - next_edge[2]) * (next_edge[0] + curr_edge[0]),
                 (curr_edge[0] - next_edge[0]) * (next_edge[1] + curr_edge[1]),
             ],
-            dtype=np.float32,
         )
 
     if additional_polygons is None:
@@ -267,18 +266,18 @@ def triangulate(
         invert = np.dot(vect_prod, cross_product) < 0
 
         if invert:
-            arrays[0].append(np.array([p1, p0, p2], dtype=np.float32))
+            arrays[0].append(np.array([p1, p0, p2], dtype=np.float64))
         else:
-            arrays[0].append(np.array([p0, p1, p2], dtype=np.float32))
+            arrays[0].append(np.array([p0, p1, p2], dtype=np.float64))
 
         for array, additional_polygon in zip(arrays[1:], additional_polygons):
             pp0 = unflatten(additional_polygon, hole_start_indices, int(t[0]))
             pp1 = unflatten(additional_polygon, hole_start_indices, int(t[1]))
             pp2 = unflatten(additional_polygon, hole_start_indices, int(t[2]))
             if invert:
-                array.append(np.array([pp1, pp0, pp2], dtype=np.float32))
+                array.append(np.array([pp1, pp0, pp2], dtype=np.float64))
             else:
-                array.append(np.array([pp0, pp1, pp2], dtype=np.float32))
+                array.append(np.array([pp0, pp1, pp2], dtype=np.float64))
 
     return arrays
 

@@ -1,7 +1,9 @@
 import json
 from .BoundingVolume import BoundingVolume
 from .Cesium3DTile import Cesium3DTile
+import math
 import os
+from shapely import get_coordinates
 
 
 class Base:
@@ -282,8 +284,8 @@ class Tile(Base):
         "extras": dict,
     }
 
-    # The allowed options for the refine property. The first option is the
-    # default, and will not be serialized to JSON.
+    # The allowed options for the refine property. The first option is the default.
+    # Root tiles must still serialize refine explicitly for Cesium compatibility.
     refine_opts = ["ADD", "REPLACE"]
 
     def __init__(
@@ -433,9 +435,6 @@ class Tile(Base):
         data = super().to_dict()
         if self.children:
             data["children"] = [child.to_dict() for child in self.children]
-        # If the refine value is default, remove it
-        if data["refine"] and data["refine"] == self.refine_opts[0]:
-            del data["refine"]
         return data
 
     def add_children(self, children, bv_method=None, bv_source="content"):
@@ -629,7 +628,7 @@ class Tileset(Base):
         self.root.add_content(content, bv)
 
     # we can implemet this if we want to calculate the height for bounding volume
-    # commented out to prioritize faster processing 
+    # commented out to prioritize faster processing
 
     # @staticmethod
     # def _get_height_range(transformed_geometries):
@@ -690,18 +689,39 @@ class Tileset(Base):
             gdf_ll = t.geodataframe.to_crs(epsg=4326)
             minx, miny, maxx, maxy = gdf_ll.total_bounds
 
-            # we can implemet this if we want to calculate the height for bounding volume
-            # commented out to prioritize faster processing 
-            # min_height, max_height = cls._get_height_range(t.transformed_geometries)
+            # Compute height range from geodataframe reprojected to EPSG:4979 (geographic 3D,
+            # WGS84 ellipsoidal height).  This gives accurate min/max heights for the region
+            # bounding volume so Cesium culls tiles correctly and renders at the right altitude.
+            try:
+                gdf_4979 = t.geodataframe.to_crs(epsg=4979)
+                z_values = [
+                    float(z)
+                    for z in get_coordinates(gdf_4979.geometry, include_z=True)[:, 2]
+                    if math.isfinite(float(z))
+                ]
+                if not z_values:
+                    raise ValueError("No finite height values in tile geometry.")
+                min_height = min(z_values)
+                max_height = max(z_values)
+            except Exception:
+                min_height = float(t.z)
+                max_height = float(t.z)
+            # Ensure the bounding volume has non-zero vertical extent so Cesium's
+            # SSE and view-frustum culling work correctly for flat polygon tiles.
+            if abs(max_height - min_height) < 0.5:
+                min_height -= 1.0
+                max_height += 1.0
 
-            root_bv = BoundingVolume({
-                "west": float(minx),
-                "south": float(miny),
-                "east": float(maxx),
-                "north": float(maxy),
-                "min_height": 0.0,
-                "max_height": 0.0,
-            })
+            root_bv = BoundingVolume(
+                {
+                    "west": float(minx),
+                    "south": float(miny),
+                    "east": float(maxx),
+                    "north": float(maxy),
+                    "min_height": min_height,
+                    "max_height": max_height,
+                }
+            )
 
             uri = os.path.join(t.save_to, t.get_filename())
             uri = os.path.relpath(uri, os.path.dirname(file_path))
@@ -721,7 +741,11 @@ class Tileset(Base):
             root = Tile(geometricError=ge)
             root.add_children(tile_objs, bv_method="replace", bv_source="root")
 
-        ts = cls( asset={"version": "1.0", "tilesetVersion":"1"},geometricError=ge, root=root)
+        ts = cls(
+            asset={"version": "1.0", "tilesetVersion": "1"},
+            geometricError=ge,
+            root=root,
+        )
         ts.to_file(file_path)
 
         return ts

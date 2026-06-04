@@ -141,8 +141,10 @@ class Cesium3DTile:
 
         # Filter out polygons as needed
         self.filter_polygons()
-        
-        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(self.to_multipolygon)
+
+        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(
+            self.to_multipolygon
+        )
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
         gdf_4978 = self.geodataframe.to_crs(epsg=self.CESIUM_EPSG)
 
@@ -264,10 +266,12 @@ class Cesium3DTile:
             if tile_span > max_width:
                 max_width = tile_span
 
-            self.geometries.append({
-                "position": positions,
-                "normal": normals,
-            })
+            self.geometries.append(
+                {
+                    "position": positions,
+                    "normal": normals,
+                }
+            )
 
         if not self.geometries:
             self.max_width = 0
@@ -336,9 +340,9 @@ class Cesium3DTile:
             )
 
             if isinstance(raw_points, (bytes, bytearray)):
-                points = np.frombuffer(raw_points, dtype=np.float32)
+                points = np.frombuffer(raw_points, dtype=np.float64)
             else:
-                points = np.asarray(raw_points, dtype=np.float32)
+                points = np.asarray(raw_points, dtype=np.float64)
 
             if isinstance(raw_normals, (bytes, bytearray)):
                 normals = np.frombuffer(raw_normals, dtype=np.float32)
@@ -363,8 +367,7 @@ class Cesium3DTile:
 
             if len(unique_points) < 4:
                 logger.warning(
-                    f"Skipping geometry {geom_index}: "
-                    f"fewer than 4 unique points"
+                    f"Skipping geometry {geom_index}: " f"fewer than 4 unique points"
                 )
                 continue
 
@@ -379,7 +382,8 @@ class Cesium3DTile:
 
             triangles = np.arange(len(points), dtype=np.uint32).reshape(-1, 3)
             triangles = triangles + vertex_offset
-            batchids = np.full(len(points), len(points_list), dtype=np.float32)
+            batch_index = len(points_list)
+            batchids = np.full(len(points), batch_index, dtype=np.uint32)
 
             points_list.append(points)
             normals_list.append(normals)
@@ -392,22 +396,56 @@ class Cesium3DTile:
             logger.warning("Skipping B3DM creation: no valid tessellated arrays.")
             return
 
-        self.geodataframe = self.geodataframe.iloc[kept_indices].copy()
-        self.transformed_geometries = self.transformed_geometries.iloc[kept_indices].copy()
-        all_points = np.vstack(points_list).astype(np.float32)
+        if len(kept_indices) != len(self.geometries):
+            self.geodataframe = self.geodataframe.iloc[kept_indices].copy()
+            self.transformed_geometries = self.transformed_geometries.iloc[
+                kept_indices
+            ].copy()
+
+        all_points_f64 = np.vstack(points_list).astype(np.float64)
         all_normals = np.vstack(normals_list).astype(np.float32)
         all_triangles = np.vstack(triangles_list).astype(np.uint32)
-        all_batchids = np.concatenate(batchids_list).astype(np.float32)
+        batchid_dtype = (
+            np.uint16 if len(points_list) <= np.iinfo(np.uint16).max else np.uint32
+        )
+        all_batchids = np.concatenate(batchids_list).astype(batchid_dtype)
 
-        # Reverse for Cesium-facing orientation.
-        all_triangles = all_triangles[:, [0, 2, 1]]
-        all_normals = -all_normals
+        # RTC_CENTER: subtract the tile centroid so vertex offsets are small (~meters).
+        # ECEF coords are about 4-6M meters so float32 only gives about 0.5m resolution; small
+        # offsets from the center give sub-millimeter float32 precision instead.
+        rtc_center = np.array(
+            [
+                (all_points_f64[:, 0].min() + all_points_f64[:, 0].max()) / 2,
+                (all_points_f64[:, 1].min() + all_points_f64[:, 1].max()) / 2,
+                (all_points_f64[:, 2].min() + all_points_f64[:, 2].max()) / 2,
+            ]
+        )  # float64
+        all_points = (all_points_f64 - rtc_center).astype(np.float32)
+
+        # Z-up to Y-up rotation stored as a glTF node matrix (column-major, 4x4).
+        # Cesium auto-applies Y-up to Z-up at the b3dm level; the two rotations cancel
+        # so vertices end up at their correct ECEF positions.
+        transform = np.array(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=np.float32,
+        ).flatten(
+            "F"
+        )  # column-major for glTF node.matrix
 
         feature_table = B3dmFeatureTable()
         feature_table.set_batch_length(len(points_list))
+        # Store RTC_CENTER as inline JSON so Cesium reads it at float64 precision.
+        feature_table.header.data["RTC_CENTER"] = rtc_center.tolist()
 
         logger.info(f"B3dm module in use: {B3dm.__module__}")
-        logger.info(f"Feature table data before tile creation: {feature_table.header.data}")
+        logger.info(
+            f"Feature table data before tile creation: {feature_table.header.data}"
+        )
         logger.info(f"Batch IDs shape: {all_batchids.shape}")
 
         tile = B3dm.from_numpy_arrays(
@@ -417,6 +455,7 @@ class Cesium3DTile:
             batchids=all_batchids,
             batch_table=self.create_batch_table(),
             feature_table=feature_table,
+            transform=transform,
         )
 
         output_path = Path(self.save_to) / self.get_filename()
