@@ -22,7 +22,9 @@ dependencies = [
   "pyproj>=3.0.0",
   "open3d>=0.14",
   "fiona<1.10",
+  "mapbox-earcut>=1.0",
   "py3dtiles @ git+https://gitlab.com/py3dtiles/py3dtiles",
+  "pygltflib>=1.16",
 ]
 
 [project.optional-dependencies]
