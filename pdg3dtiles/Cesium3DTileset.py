@@ -681,7 +681,10 @@ class Tileset(Base):
         tile_objs = []
 
         for t in tiles:
-            ge = max(ge, t.max_width)
+            tile_geometric_error = getattr(t, "geometric_error", None)
+            if tile_geometric_error is None or tile_geometric_error <= 0:
+                tile_geometric_error = t.max_width
+            ge = max(ge, tile_geometric_error)
             content_bv = BoundingVolume.from_z_polygons(
                 t.transformed_geometries,
                 type="box",
@@ -727,7 +730,7 @@ class Tileset(Base):
             uri = os.path.relpath(uri, os.path.dirname(file_path))
             tile_obj = Tile(
                 boundingVolume=root_bv,
-                geometricError=t.max_width,
+                geometricError=tile_geometric_error,
                 content=Content(
                     uri=uri,
                     boundingVolume=content_bv,

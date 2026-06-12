@@ -178,7 +178,10 @@ class BoundingVolumeBox(BoundingVolume):
         assert len(points[0]) == 3
 
         points3d = o3d.utility.Vector3dVector(points)
-        obb = o3d.geometry.OrientedBoundingBox.create_from_points(points3d)
+        try:
+            obb = o3d.geometry.OrientedBoundingBox.create_from_points(points3d)
+        except RuntimeError:
+            return cls._axis_aligned_from_points(points)
 
         centroid = obb.center
         ext = obb.extent / 2.0
@@ -189,6 +192,30 @@ class BoundingVolumeBox(BoundingVolume):
         z = rotation.dot([0, 0, ext[2]])
 
         box = np.concatenate([centroid, x, y, z]).tolist()
+
+        return cls(box)
+
+    @classmethod
+    def _axis_aligned_from_points(cls, points):
+        points = np.asarray(points, dtype=np.float64)
+        points = points[np.isfinite(points).all(axis=1)]
+        if len(points) == 0:
+            raise ValueError("points must include at least one finite 3D point")
+
+        mins = points.min(axis=0)
+        maxs = points.max(axis=0)
+        center = (mins + maxs) / 2.0
+        half_lengths = (maxs - mins) / 2.0
+        half_lengths = np.maximum(half_lengths, 0.5)
+
+        box = np.concatenate(
+            [
+                center,
+                [half_lengths[0], 0.0, 0.0],
+                [0.0, half_lengths[1], 0.0],
+                [0.0, 0.0, half_lengths[2]],
+            ]
+        ).tolist()
 
         return cls(box)
 
