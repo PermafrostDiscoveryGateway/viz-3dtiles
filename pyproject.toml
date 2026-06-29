@@ -12,16 +12,18 @@ authors = [
 ]
 license = { text = "Apache License Version 2.0" }
 readme = "README.md"
-requires-python = ">=3.8, <3.11"
+requires-python = ">=3.11"
 dependencies = [
-  "numpy >=1.20, <2.0",
-  "pandas >=1.4, <2.0",
-  "shapely >=2.0.0",
-  "geopandas >=0.12, <1.0",
-  "pyproj >=3.0.0",
-  "open3d>=0.14,<0.19",
+  "numpy>=1.20",
+  "pandas>=1.4",
+  "shapely>=2.0.0",
+  "geopandas>=0.14",
+  "pyproj>=3.0.0",
+  "open3d>=0.14",
   "fiona<1.10",
-  "pdgpy3dtiles @ git+https://github.com/PermafrostDiscoveryGateway/py3dtiles.git",
+  "mapbox-earcut>=1.0",
+  "py3dtiles @ git+https://gitlab.com/py3dtiles/py3dtiles",
+  "pygltflib>=1.16",
 ]
 
 [project.optional-dependencies]
@@ -44,4 +46,4 @@ allow-direct-references = true
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ["py311"]

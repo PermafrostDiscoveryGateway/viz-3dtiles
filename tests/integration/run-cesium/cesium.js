@@ -7,7 +7,11 @@ var Cartesian3 = Cesium.Cartesian3;
 var cesiumTerrainProvider = Cesium.createWorldTerrain();
 var ellipsoidTerrainProvider = new Cesium.EllipsoidTerrainProvider();
 
-const viewer = new Cesium.Viewer('cesiumContainer', {});
+const viewer = new Cesium.Viewer('cesiumContainer', {
+  imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+    url: 'https://a.tile.openstreetmap.org/'
+  })
+});
 const scene = viewer.scene;
 
 var layers = scene.imageryLayers;
@@ -34,25 +38,6 @@ tileset.style = new Cesium.Cesium3DTileStyle({
   show: true,
 });
 
-// The tileset created by FME
-var tilesetFME = new Cesium.Cesium3DTileset({
-  url: "tilesets/from-FME/tileset.json",
-  debugShowBoundingVolume: false,
-  debugShowContentBoundingVolume: false,
-  debugShowGeometricError: true,
-  debugWireframe: false
-});
-
-tilesetFME.style = new Cesium.Cesium3DTileStyle({
-  color: {
-    conditions: [
-      ["true", "color('red')"],
-    ],
-  },
-  show: true,
-});
-
-//viewer.scene.primitives.add(tilesetFME);
 viewer.scene.primitives.add(tileset);
 
 
