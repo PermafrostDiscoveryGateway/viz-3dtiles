@@ -627,7 +627,7 @@ class Tileset(Base):
         """
         self.root.add_content(content, bv)
 
-    # we can implemet this if we want to calculate the height for bounding volume
+    # we can implement this if we want to calculate the height for bounding volume
     # commented out to prioritize faster processing
 
     # @staticmethod

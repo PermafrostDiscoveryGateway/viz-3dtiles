@@ -216,14 +216,6 @@ class Cesium3DTile:
         return z
 
     @staticmethod
-    def _geometry_has_z(geom):
-        if isinstance(geom, Polygon):
-            return geom.has_z
-        if isinstance(geom, MultiPolygon):
-            return all(poly.has_z for poly in geom.geoms)
-        return False
-
-    @staticmethod
     def _metric_gdf_for_error(gdf):
         if gdf.crs is None:
             return gdf
