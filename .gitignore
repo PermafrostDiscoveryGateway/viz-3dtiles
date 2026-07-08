@@ -142,6 +142,6 @@ dmypy.json
 .DS_Store
 
 # testing / NPM
-test/run-cesium/node_modules/*
-test/run-cesium/package.json
-test/run-cesium/package-lock.json
+tests/integration/run-cesium/node_modules/*
+tests/integration/run-cesium/package.json
+tests/integration/run-cesium/package-lock.json

@@ -1,7 +1,58 @@
+import math
 import os
 from .BoundingVolume import BoundingVolume
 from .Cesium3DTile import Cesium3DTile
 from .Cesium3DTileset import Tileset, Asset, Content
+
+
+def _height_preserving_bounding_volume(bounding_volume, fallback_bounding_volume):
+    if not isinstance(bounding_volume, dict):
+        return BoundingVolume(bounding_volume)
+
+    if not BoundingVolume.is_degree_dict(bounding_volume):
+        return BoundingVolume(bounding_volume)
+
+    bounded = dict(bounding_volume)
+    if "min_height" not in bounded or "max_height" not in bounded:
+        try:
+            min_height, max_height = fallback_bounding_volume.get_heights()
+        except AttributeError:
+            min_height, max_height = 0.0, 1.0
+        bounded.setdefault("min_height", min_height)
+        bounded.setdefault("max_height", max_height)
+
+    return BoundingVolume(bounded)
+
+
+def _bounding_volume_geometric_error(bounding_volume):
+    """
+    Estimate a traversal-friendly geometric error from a bounding volume size.
+    """
+    if bounding_volume is None:
+        return 0.0
+
+    if "to_dict" in dir(bounding_volume):
+        bounding_volume = bounding_volume.to_dict()
+
+    values = bounding_volume.get("box") or bounding_volume.get("region")
+    if values is None:
+        return 0.0
+
+    if len(values) == 12:
+        axes = [values[3:6], values[6:9], values[9:12]]
+        half_lengths = [math.sqrt(sum(coord * coord for coord in axis)) for axis in axes]
+        return max(2.0 * math.sqrt(sum(length * length for length in half_lengths)), 0.0)
+
+    if len(values) == 6:
+        west, south, east, north, min_height, max_height = values
+        mean_lat = (south + north) / 2.0
+        earth_radius_m = 6378137.0
+        width = abs(east - west) * earth_radius_m * math.cos(mean_lat)
+        height = abs(north - south) * earth_radius_m
+        depth = abs(max_height - min_height)
+        return max(math.sqrt(width * width + height * height + depth * depth), 0.0)
+
+    return 0.0
 
 
 def leaf_tile_from_gdf(
@@ -9,7 +60,7 @@ def leaf_tile_from_gdf(
     dir="",
     filename="tileset",
     crs=None,
-    z=0,
+    z=None,
     geometricError=None,
     tilesetVersion=None,
     boundingVolume=None,
@@ -33,9 +84,9 @@ def leaf_tile_from_gdf(
     crs : str
         The coordinate reference system of the GeoDataFrame, if the GeoDataFrame
         does not have a CRS set.
-    z : int
+    z : float
         If the GeoDataFrame does not have a Z coordinate, then the Z coordinate
-        will be set to this value. Default is 0.
+        will be set to this value. If omitted, a small visible lift is used.
     geometricError : float
         The geometric error of the tile. If None (default), the geometric error
         will be the max_width calculated when creating the Cesium3DTile (B3DM).
@@ -58,34 +109,22 @@ def leaf_tile_from_gdf(
     tile.save_to = dir
     tile.save_as = filename
     tile.from_geodataframe(gdf, crs=crs, z=z)
-    gdf = tile.geodataframe
-    tile_bounding_volume = BoundingVolume.from_gdf(gdf)
-    tile.get_filename()
 
-    # Only set the optional content bounding volume if it differs from the root
-    # tile bounding volume
-    root_bounding_volume = tile_bounding_volume
-    content_bounding_volume = None
-    if boundingVolume:
-        root_bounding_volume = BoundingVolume(boundingVolume)
-        content_bounding_volume = tile_bounding_volume
-
-    asset = Asset(tilesetVersion=tilesetVersion)
-
-    content = Content(uri=tile.get_filename(), boundingVolume=content_bounding_volume)
-
-    root_tile_data = {
-        "boundingVolume": root_bounding_volume,
-        "geometricError": geometricError or tile.max_width,
-        "content": content,
-    }
-    tileset_data = {
-        "asset": asset,
-        "geometricError": geometricError or tile.max_width,
-        "root": root_tile_data,
-    }
-    tileset = Tileset(**tileset_data)
     json_path = os.path.join(dir, filename + ".json")
+    tileset = Tileset.from_Cesium3DTiles(tile, json_path)
+
+    if boundingVolume:
+        tileset.root.boundingVolume = _height_preserving_bounding_volume(
+            boundingVolume, tileset.root.boundingVolume
+        )
+
+    if geometricError is not None:
+        tileset.geometricError = geometricError
+        tileset.root.geometricError = geometricError
+
+    if tilesetVersion:
+        tileset.asset.tilesetVersion = tilesetVersion
+
     tileset.to_file(json_path, minify=minify_json)
     return tile, tileset
 
@@ -211,8 +250,9 @@ def parent_tile_from_children_json(
     new_tileset.root.content = None
     new_tileset.root.children = None
 
-    # Add the children to the parent tileset
-    bv_method = "replace" if boundingVolume is None else None
+    # Add children first so we can preserve their vertical extent even when an
+    # external bounding volume constrains the horizontal tile footprint.
+    bv_method = "replace"
     bv_source = boundingVolumeSource
     new_tileset.add_children(child_root_tiles, bv_method, bv_source)
 
@@ -225,15 +265,23 @@ def parent_tile_from_children_json(
 
     # Update other parameters to the parent tileset
     if boundingVolume:
-        new_tileset.root.boundingVolume = BoundingVolume(boundingVolume)
+        new_tileset.root.boundingVolume = _height_preserving_bounding_volume(
+            boundingVolume, new_tileset.root.boundingVolume
+        )
 
     if tilesetVersion:
         new_tileset.asset.tilesetVersion = tilesetVersion
 
     if geometricError is not None:
-        new_tileset.geometricError = geometricError
+        parent_geometric_error = geometricError
     else:
-        new_tileset.geometricError = max(child_geo_errors)
+        parent_geometric_error = max(
+            child_geo_errors
+            + [_bounding_volume_geometric_error(new_tileset.root.boundingVolume)]
+        )
+
+    new_tileset.geometricError = parent_geometric_error
+    new_tileset.root.geometricError = parent_geometric_error
 
     # make output directory if it doesn't exist, then save
     if not os.path.exists(dir):
