@@ -18,6 +18,7 @@ requires-python = ">= 3.11"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "numpy>=1.20",
@@ -52,4 +53,4 @@ allow-direct-references = true
 
 [tool.black]
 line-length = 88
-target-version = ["py311"]
+target-version = ["py311", "py312"]

@@ -18,7 +18,7 @@ Cite this software as:
 
 ## Install via UV or pip
 
-Requires Python version `3.11`.
+Requires Python version `3.11` or `3.12`.
 
 ### UV (Recommended)
 
@@ -39,10 +39,10 @@ uv pip install -e .
 
 ### Pip install
 
-1. Create a Python 3.11 virtual environment:
+1. Create a Python 3.11 or 3.12 virtual environment:
 
 ```bash
-python3.11 -m venv .3dtilesenv
+python3.11 -m venv .3dtilesenv  # Or use python3.12
 source .3dtilesenv/bin/activate
 ```
 
@@ -95,7 +95,7 @@ uv pip install -e ".[dev]"
 
 ### Using Pip
 ```bash
-python3.11 -m venv .3dtilesenv
+python3.11 -m venv .3dtilesenv  # Or use python3.12
 source .3dtilesenv/bin/activate
 pip install -e ".[dev]"
 ```
