@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Install system dependencies including C++ compiler
 RUN apt-get update \
@@ -17,6 +17,6 @@ RUN apt-get update \
 RUN pip install uv
 
 # Install pdgstaging from GitHub repo using uv
-RUN uv pip install --system git+https://github.com/PermafrostDiscoveryGateway/viz-3dtiles.git@feature-3dt-k8s
+RUN uv pip install --system git+https://github.com/PermafrostDiscoveryGateway/viz-3dtiles.git@main
 
 WORKDIR /app
