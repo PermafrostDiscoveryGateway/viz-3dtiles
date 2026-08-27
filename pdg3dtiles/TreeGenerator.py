@@ -1,4 +1,3 @@
-import math
 import os
 from .BoundingVolume import BoundingVolume
 from .Cesium3DTile import Cesium3DTile
@@ -22,37 +21,6 @@ def _height_preserving_bounding_volume(bounding_volume, fallback_bounding_volume
         bounded.setdefault("max_height", max_height)
 
     return BoundingVolume(bounded)
-
-
-def _bounding_volume_geometric_error(bounding_volume):
-    """
-    Estimate a traversal-friendly geometric error from a bounding volume size.
-    """
-    if bounding_volume is None:
-        return 0.0
-
-    if "to_dict" in dir(bounding_volume):
-        bounding_volume = bounding_volume.to_dict()
-
-    values = bounding_volume.get("box") or bounding_volume.get("region")
-    if values is None:
-        return 0.0
-
-    if len(values) == 12:
-        axes = [values[3:6], values[6:9], values[9:12]]
-        half_lengths = [math.sqrt(sum(coord * coord for coord in axis)) for axis in axes]
-        return max(2.0 * math.sqrt(sum(length * length for length in half_lengths)), 0.0)
-
-    if len(values) == 6:
-        west, south, east, north, min_height, max_height = values
-        mean_lat = (south + north) / 2.0
-        earth_radius_m = 6378137.0
-        width = abs(east - west) * earth_radius_m * math.cos(mean_lat)
-        height = abs(north - south) * earth_radius_m
-        depth = abs(max_height - min_height)
-        return max(math.sqrt(width * width + height * height + depth * depth), 0.0)
-
-    return 0.0
 
 
 def leaf_tile_from_gdf(
@@ -275,10 +243,7 @@ def parent_tile_from_children_json(
     if geometricError is not None:
         parent_geometric_error = geometricError
     else:
-        parent_geometric_error = max(
-            child_geo_errors
-            + [_bounding_volume_geometric_error(new_tileset.root.boundingVolume)]
-        )
+        parent_geometric_error = max(child_geo_errors)
 
     new_tileset.geometricError = parent_geometric_error
     new_tileset.root.geometricError = parent_geometric_error
