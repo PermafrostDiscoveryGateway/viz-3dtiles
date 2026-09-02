@@ -5,6 +5,21 @@ from .Cesium3DTileset import Tileset, Asset, Content
 
 
 def _height_preserving_bounding_volume(bounding_volume, fallback_bounding_volume):
+    """
+    Return a BoundingVolume with heights filled from fallback if needed.
+
+    Parameters
+    ----------
+    bounding_volume : dict or BoundingVolume
+        Requested bounding volume.
+    fallback_bounding_volume : BoundingVolume
+        Source for missing heights.
+
+    Returns
+    -------
+    BoundingVolume
+        Bounding volume with a defined height interval.
+    """
     if not isinstance(bounding_volume, dict):
         return BoundingVolume(bounding_volume)
 

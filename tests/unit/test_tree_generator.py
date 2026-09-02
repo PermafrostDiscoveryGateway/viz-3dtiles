@@ -5,6 +5,7 @@ from pdg3dtiles import parent_tile_from_children_json
 
 
 def test_parent_default_geometric_error_uses_child_error_not_region_size(tmp_path):
+    """Parent geometric error defaults to max child error, not region size."""
     broad_region = {
         "region": [-math.pi, -math.pi / 2, 0.0, math.pi / 2, -1.0, 1.0]
     }
