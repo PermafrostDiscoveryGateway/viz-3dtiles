@@ -16,7 +16,7 @@ from .TreeGenerator import leaf_tile_from_gdf, parent_tile_from_children_json
 
 
 def _require_overwrite(paths, overwrite):
-    """Refuse to clobber existing outputs unless overwriting is allowed.
+    """Refuse to replace existing outputs unless overwriting is allowed.
 
     Parameters
     ----------

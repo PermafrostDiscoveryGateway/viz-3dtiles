@@ -70,6 +70,24 @@ tileset.save_to="~/my-tilesets/lakes/"
 tileset.write_file()
 ```
 
+## Explicit Operations
+
+Call functions directly with explicit paths; each returns its output paths:
+
+```python
+from pdg3dtiles import compose_tileset, convert_leaf
+
+convert_leaf("tile.gpkg", "tile.b3dm", "tile.json")
+compose_tileset(["child-a.json", "child-b.json"], "root.json")
+```
+
+The same operations are available as thin CLI subcommands:
+
+```bash
+python -m pdg3dtiles convert-leaf tile.gpkg tile.b3dm tile.json
+python -m pdg3dtiles compose-tileset root.json child-a.json child-b.json
+```
+
 ## Demo
 
 See [/test/test.py](test/test.py) which creates an example tileset.
