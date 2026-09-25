@@ -373,9 +373,23 @@ class Cesium3DTile:
                 values.append(u.urn)
             self.geodataframe["uuid"] = values
 
-        attributes = self.geodataframe.columns.drop("geometry")
+        staging_columns = [
+            column
+            for column in self.geodataframe.columns
+            if isinstance(column, str) and column.startswith("staging_")
+        ]
+        if staging_columns:
+            logger.info(
+                "Dropping staging columns from batch table: %s", staging_columns
+            )
+
+        attributes = [
+            column
+            for column in self.geodataframe.columns
+            if column != "geometry" and column not in staging_columns
+        ]
         logger.debug(
-            f"Adding {len(attributes)} attributes to batch table: {attributes.tolist()}"
+            f"Adding {len(attributes)} attributes to batch table: {attributes}"
         )
 
         for attr in attributes:
