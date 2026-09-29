@@ -1,5 +1,5 @@
 import os
-from .BoundingVolume import BoundingVolume
+from .BoundingVolume import BoundingVolume, BoundingVolumeRegion
 from .Cesium3DTile import Cesium3DTile
 from .Cesium3DTileset import Tileset, Asset, Content
 
@@ -36,6 +36,25 @@ def _height_preserving_bounding_volume(bounding_volume, fallback_bounding_volume
         bounded.setdefault("max_height", max_height)
 
     return BoundingVolume(bounded)
+
+
+def _enclosing_bounding_volume(requested, content_bounding_volume):
+    """
+    Return ``requested`` grown so that it also encloses the content's own
+    bounding volume.
+
+    The 3D Tiles spec requires a tile's bounding volume to enclose its content.
+    A caller-supplied footprint (for example the nominal tile-matrix-set tile)
+    is smaller than the content when polygons are assigned to a tile by centroid
+    but not clipped to it; using it as-is makes Cesium frustum-cull the
+    overflowing geometry when the camera is close. Only regions can be merged;
+    any other combination is returned unchanged.
+    """
+    if isinstance(requested, BoundingVolumeRegion) and isinstance(
+        content_bounding_volume, BoundingVolumeRegion
+    ):
+        return requested.add(content_bounding_volume)
+    return requested
 
 
 def leaf_tile_from_gdf(
@@ -97,8 +116,11 @@ def leaf_tile_from_gdf(
     tileset = Tileset.from_Cesium3DTiles(tile, json_path)
 
     if boundingVolume:
-        tileset.root.boundingVolume = _height_preserving_bounding_volume(
-            boundingVolume, tileset.root.boundingVolume
+        tileset.root.boundingVolume = _enclosing_bounding_volume(
+            _height_preserving_bounding_volume(
+                boundingVolume, tileset.root.boundingVolume
+            ),
+            tileset.root.boundingVolume,
         )
 
     if geometricError is not None:

@@ -37,3 +37,34 @@ def test_parent_default_geometric_error_uses_child_error_not_region_size(tmp_pat
 
     assert parent.geometricError == 20.0
     assert parent.root.geometricError == 20.0
+
+
+def _overflowing_gdf():
+    """One polygon whose centroid is inside the nominal tile but which spills out."""
+    import geopandas as gpd
+    from shapely.geometry import box
+
+    # Nominal tile footprint is lon/lat [-10, 70, -9, 71]; the polygon covers
+    # [-10.5, 70.2, -8.0, 70.8], so its centroid (-9.25, 70.5) sits inside the tile.
+    return gpd.GeoDataFrame({"id": [1]}, geometry=[box(-10.5, 70.2, -8.0, 70.8)], crs="EPSG:4326")
+
+
+def _region_deg(bounding_volume):
+    west, south, east, north = (math.degrees(v) for v in bounding_volume.to_list()[:4])
+    return west, south, east, north
+
+
+def test_leaf_region_contains_geometry_that_overflows_nominal_tile(tmp_path):
+    """A leaf tile's region must enclose its content even if the caller passes a
+    smaller nominal footprint; otherwise Cesium culls the overflowing geometry."""
+    from pdg3dtiles import leaf_tile_from_gdf
+
+    nominal = {"west": -10.0, "south": 70.0, "east": -9.0, "north": 71.0}
+
+    _, tileset = leaf_tile_from_gdf(
+        _overflowing_gdf(), dir=str(tmp_path), filename="leaf", z=8.0, boundingVolume=nominal
+    )
+
+    west, south, east, north = _region_deg(tileset.root.boundingVolume)
+    assert west <= -10.5 + 1e-6 and east >= -8.0 - 1e-6
+    assert south <= 70.0 + 1e-6 and north >= 71.0 - 1e-6  # still covers the nominal tile
