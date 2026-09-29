@@ -68,3 +68,37 @@ def test_leaf_region_contains_geometry_that_overflows_nominal_tile(tmp_path):
     west, south, east, north = _region_deg(tileset.root.boundingVolume)
     assert west <= -10.5 + 1e-6 and east >= -8.0 - 1e-6
     assert south <= 70.0 + 1e-6 and north >= 71.0 - 1e-6  # still covers the nominal tile
+
+
+def test_parent_region_contains_children_that_overflow_nominal_footprint(tmp_path):
+    """A parent's region must enclose its children even when the caller passes a
+    smaller nominal footprint."""
+    child_region = [
+        math.radians(v) for v in (-10.5, 70.2, -8.0, 70.8)
+    ] + [7.0, 9.0]
+    child_path = tmp_path / "child.json"
+    child_path.write_text(
+        json.dumps(
+            {
+                "asset": {"version": "1.0"},
+                "geometricError": 5.0,
+                "root": {
+                    "boundingVolume": {"region": child_region},
+                    "geometricError": 5.0,
+                    "refine": "ADD",
+                },
+            }
+        )
+    )
+
+    parent = parent_tile_from_children_json(
+        children=[str(child_path)],
+        dir=str(tmp_path),
+        filename="parent",
+        boundingVolume={"west": -10.0, "south": 70.0, "east": -9.0, "north": 71.0},
+        boundingVolumeSource="root",
+    )
+
+    west, south, east, north = _region_deg(parent.root.boundingVolume)
+    assert west <= -10.5 + 1e-6 and east >= -8.0 - 1e-6
+    assert south <= 70.0 + 1e-6 and north >= 71.0 - 1e-6

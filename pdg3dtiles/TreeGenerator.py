@@ -270,8 +270,11 @@ def parent_tile_from_children_json(
 
     # Update other parameters to the parent tileset
     if boundingVolume:
-        new_tileset.root.boundingVolume = _height_preserving_bounding_volume(
-            boundingVolume, new_tileset.root.boundingVolume
+        new_tileset.root.boundingVolume = _enclosing_bounding_volume(
+            _height_preserving_bounding_volume(
+                boundingVolume, new_tileset.root.boundingVolume
+            ),
+            new_tileset.root.boundingVolume,
         )
 
     if tilesetVersion:
