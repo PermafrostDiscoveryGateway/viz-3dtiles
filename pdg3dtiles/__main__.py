@@ -2,7 +2,6 @@
 
 import argparse
 import json
-from pathlib import Path
 
 from .operations import compose_tileset, convert_leaf
 
