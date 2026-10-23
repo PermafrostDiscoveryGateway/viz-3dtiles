@@ -158,7 +158,8 @@ def _compose(child_paths, output_path, overwrite, **options):
     output = Path(output_path)
     _require_overwrite((output,), overwrite)
     output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output.with_name(f".{output.stem}.tmp{output.suffix}")
+    # The generator always writes ``<filename>.json``, so the temp name must too.
+    temporary = output.with_name(f".{output.name}.tmp.json")
     try:
         parent_tile_from_children_json(
             [str(path) for path in children],

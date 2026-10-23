@@ -122,3 +122,15 @@ def test_parent_and_root_use_only_explicit_children(tmp_path):
         "a.json",
         "b.json",
     ]
+
+
+def test_compose_tileset_accepts_any_output_suffix(tmp_path):
+    from pdg3dtiles.operations import compose_tileset
+
+    child = tmp_path / "child.json"
+    child.write_text(
+        '{"asset":{"version":"1.0"},"geometricError":1,"root":{"boundingVolume":{"region":[0,0,1,1,0,1]},"geometricError":1,"refine":"ADD","content":{"uri":"model.b3dm"}}}'
+    )
+    output = compose_tileset([child], tmp_path / "root.tileset")
+    assert output.is_file()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["child.json", "root.tileset"]
