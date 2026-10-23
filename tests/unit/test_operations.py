@@ -58,6 +58,28 @@ def test_leaf_failure_leaves_neither_output(tmp_path, monkeypatch):
     assert not content.exists() and not tileset.exists()
 
 
+def test_failed_overwrite_keeps_previous_outputs(tmp_path, monkeypatch):
+    import geopandas as gpd
+    from shapely.geometry import Polygon
+    from pdg3dtiles import operations
+
+    source = tmp_path / "source.gpkg"
+    gpd.GeoDataFrame(
+        geometry=[Polygon([(0, 0), (1, 0), (0, 1)])], crs="EPSG:4326"
+    ).to_file(source)
+    content, tileset = tmp_path / "model.b3dm", tmp_path / "tileset.json"
+    operations.convert_leaf(source, content, tileset)
+    before = (content.read_bytes(), tileset.read_bytes())
+
+    def _fail(*_args, **_kwargs):
+        raise RuntimeError("no leaf")
+
+    monkeypatch.setattr(operations, "leaf_tile_from_gdf", _fail)
+    with pytest.raises(RuntimeError, match="no leaf"):
+        operations.convert_leaf(source, content, tileset, overwrite=True)
+    assert (content.read_bytes(), tileset.read_bytes()) == before
+
+
 def test_compose_tileset_is_canonical_and_aliases_delegate(tmp_path):
     from pdg3dtiles.operations import compose_parent, compose_root, compose_tileset
 
