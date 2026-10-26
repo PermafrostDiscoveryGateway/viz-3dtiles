@@ -51,7 +51,8 @@ def convert_leaf(
 
     Both files are generated and validated in a temporary directory, the
     tileset content URI is written relative to the final tileset location,
-    and then both are placed. On failure neither final file is left behind.
+    and then both are placed. On failure no new output is left behind, and
+    outputs that existed before the call (``overwrite=True``) are untouched.
 
     Parameters
     ----------
@@ -89,6 +90,7 @@ def convert_leaf(
     content = Path(content_output)
     tileset_path = Path(tileset_output)
     _require_overwrite((content, tileset_path), overwrite)
+    preexisting = {path for path in (content, tileset_path) if path.exists()}
     for path in (content, tileset_path):
         path.parent.mkdir(parents=True, exist_ok=True)
     temp_dir = Path(
@@ -117,7 +119,8 @@ def convert_leaf(
         return (content, tileset_path)
     except Exception:
         for path in (content, tileset_path):
-            path.unlink(missing_ok=True)
+            if path not in preexisting:
+                path.unlink(missing_ok=True)
         raise
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -155,7 +158,8 @@ def _compose(child_paths, output_path, overwrite, **options):
     output = Path(output_path)
     _require_overwrite((output,), overwrite)
     output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output.with_name(f".{output.stem}.tmp{output.suffix}")
+    # The generator always writes ``<filename>.json``, so the temp name must too.
+    temporary = output.with_name(f".{output.name}.tmp.json")
     try:
         parent_tile_from_children_json(
             [str(path) for path in children],
