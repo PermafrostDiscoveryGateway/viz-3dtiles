@@ -17,6 +17,7 @@ from py3dtiles.tileset.content.gltf import Gltf
 from shapely import get_coordinates
 from shapely.geometry import LinearRing, MultiPolygon, Polygon
 
+from .clipping import clip_to_max_extent
 from .triangulation import triangulate_multipolygon
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,11 @@ class Cesium3DTile:
     CESIUM_EPSG = 4978
     FILE_EXT = ".b3dm"
     DEFAULT_FALLBACK_Z = 1.0
+    # Largest extent (metres) of a polygon part before triangulation. Straight
+    # ECEF chords sag about L^2 / (8 R) below the ellipsoid, so bounding parts to
+    # 5 km keeps the sag near 1 m and flat polygons above a depth-tested globe.
+    DEFAULT_MAX_EXTENT = 5_000.0
+    _METRES_PER_DEGREE = 111_000.0
 
     def __init__(self):
         self.geodataframe = GeoDataFrame()
@@ -33,6 +39,8 @@ class Cesium3DTile:
         self.save_as = "model"
         self.save_to = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.max_features = 99999999999
+        # None disables clipping of large 2D polygons into bounded parts.
+        self.max_extent = self.DEFAULT_MAX_EXTENT
         self.geometries = []
         self.gltf = None
         self.debugCreateGLB = False
@@ -148,6 +156,9 @@ class Cesium3DTile:
         self.filter_polygons()
 
         self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(
+            self._clip_large_2d
+        )
+        self.geodataframe["geometry"] = self.geodataframe["geometry"].apply(
             self.to_multipolygon
         )
         logger.info(f"Reprojecting geometries to EPSG:{self.CESIUM_EPSG}")
@@ -179,6 +190,20 @@ class Cesium3DTile:
                 for ring in geom.interiors
             ]
         return Polygon(exterior, interior)
+
+    def _clip_large_2d(self, geom):
+        """Cut a large 2D polygon into bounded parts (see ``clip_to_max_extent``).
+
+        Geometry that carries its own Z is left alone: clipping discards Z.
+        """
+        if self.max_extent is None or geom.has_z:
+            return geom
+        crs = self.geodataframe.crs
+        if crs.is_geographic:
+            units = self._METRES_PER_DEGREE
+        else:
+            units = crs.axis_info[0].unit_conversion_factor
+        return clip_to_max_extent(geom, self.max_extent / units)
 
     def to_multipolygon(self, geom):
         """Converts a Polygon to a MultiPolygon."""
@@ -373,9 +398,23 @@ class Cesium3DTile:
                 values.append(u.urn)
             self.geodataframe["uuid"] = values
 
-        attributes = self.geodataframe.columns.drop("geometry")
+        staging_columns = [
+            column
+            for column in self.geodataframe.columns
+            if isinstance(column, str) and column.startswith("staging_")
+        ]
+        if staging_columns:
+            logger.info(
+                "Dropping staging columns from batch table: %s", staging_columns
+            )
+
+        attributes = [
+            column
+            for column in self.geodataframe.columns
+            if column != "geometry" and column not in staging_columns
+        ]
         logger.debug(
-            f"Adding {len(attributes)} attributes to batch table: {attributes.tolist()}"
+            f"Adding {len(attributes)} attributes to batch table: {attributes}"
         )
 
         for attr in attributes:
