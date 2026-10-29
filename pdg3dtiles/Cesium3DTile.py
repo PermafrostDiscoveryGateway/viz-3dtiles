@@ -19,10 +19,6 @@ from shapely.geometry import LinearRing, MultiPolygon, Polygon
 
 from .triangulation import triangulate_multipolygon
 
-# Initialize logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
